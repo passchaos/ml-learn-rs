@@ -60,3 +60,14 @@ pub fn file2matrix(file_path: &str) -> Result<Vec<SampleData>> {
 
     Ok(result)
 }
+
+pub fn auto_norm(data_set: &[f64]) -> (Vec<f64>, f64, f64) {
+    let min_value = *data_set.iter().min_by(|a, b| a.total_cmp(b)).unwrap();
+    let max_value = *data_set.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+
+    let range = max_value - min_value;
+
+    let res_set = data_set.iter().map(|v| (v - min_value) / range).collect();
+
+    (res_set, range, min_value)
+}

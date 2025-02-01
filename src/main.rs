@@ -1,7 +1,8 @@
 use anyhow::Result;
 use plotly::{
-    Plot, Scatter,
-    common::{Marker, Mode},
+    Layout, Plot, Scatter,
+    common::{Marker, Mode, Title},
+    layout::{Axis, Legend},
 };
 
 mod knn;
@@ -61,8 +62,14 @@ fn main() -> Result<()> {
     println!("samples: {samples:?}");
 
     let licheng_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[0]).collect();
+    let (licheng_normed_values, licheng_range, licheng_min) = knn::auto_norm(&licheng_values);
+    println!("normed values= {licheng_normed_values:?} range= {licheng_range} min= {licheng_min}");
+
     let game_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[1]).collect();
+    let (game_normed_values, game_range, game_min) = knn::auto_norm(&game_values);
     let ice_cream_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[2]).collect();
+    let (ice_normed_values, ice_range, ice_min) = knn::auto_norm(&ice_cream_values);
+
     let labels: Vec<usize> = samples.iter().map(|sd| sd.label.parse().unwrap()).collect();
 
     let size_arr: Vec<_> = labels.iter().map(|ll| ll * 5).collect();
@@ -70,12 +77,18 @@ fn main() -> Result<()> {
         .size_array(size_arr.clone())
         .color_array(size_arr);
 
-    let trace1 = Scatter::new(licheng_values, game_values)
+    let trace1 = Scatter::new(licheng_normed_values, game_normed_values)
         .mode(Mode::Markers)
         .marker(marker);
 
+    let layout = Layout::new()
+        .x_axis(Axis::new().title("每年获取的飞行里程数"))
+        .y_axis(Axis::new().title("玩视频游戏所耗时间百分比"))
+        .legend(Legend::new());
+
     let mut plt = Plot::new();
     plt.add_trace(trace1);
+    plt.set_layout(layout);
     plt.show();
 
     Ok(())
