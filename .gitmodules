@@ -1,0 +1,3 @@
+[submodule "MachineLearningInActionSourceCode"]
+	path = MachineLearningInActionSourceCode
+	url = https://github.com/DawnGuoDev/MachineLearningInActionSourceCode.git
