@@ -4,31 +4,49 @@ use std::{
 };
 
 use anyhow::Result;
+use ndarray::{Array1, Array2, Axis};
 
 use crate::{Data, SampleData};
 
-pub fn classify(input: Data, sample_datas: &[SampleData], k: usize) -> String {
-    let mut data_info: Vec<_> = sample_datas
-        .iter()
-        .map(|s_d| (s_d.data.distance(&input), s_d.label.to_string()))
-        .collect();
+pub fn classify(
+    input: Array1<f64>,
+    data_set: Array2<f64>,
+    labels: Array1<String>,
+    // sample_datas: &[SampleData],
+    k: usize,
+) -> String {
+    let data_set_size = input.len_of(Axis(0));
 
-    println!("data info: {data_info:?}");
-    data_info.sort_by(|a, b| a.0.total_cmp(&b.0));
-    println!("sorted data info: {data_info:?}");
+    let diff_mat = input - data_set;
+    let sq_diff_mat = diff_mat.pow2();
+    println!("diff mat: {diff_mat:?} {sq_diff_mat:?}");
 
-    let mut results: HashMap<String, u32> = HashMap::new();
+    let sq_distances = sq_diff_mat.sum_axis(Axis(1));
+    let distances = sq_distances.sqrt();
+    println!("sq distances: {sq_distances:?} {distances:?}");
 
-    data_info.into_iter().take(k).for_each(|(_value, label)| {
-        *results.entry(label).or_default() += 1;
-    });
+    // let mut data_info: Vec<_> = sample_datas
+    //     .iter()
+    //     .map(|s_d| (s_d.data.distance(&input), s_d.label.to_string()))
+    //     .collect();
 
-    let result = results
-        .into_iter()
-        .max_by_key(|ds| ds.1)
-        .expect("can't get max result");
+    // println!("data info: {data_info:?}");
+    // data_info.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // println!("sorted data info: {data_info:?}");
 
-    result.0
+    // let mut results: HashMap<String, u32> = HashMap::new();
+
+    // data_info.into_iter().take(k).for_each(|(_value, label)| {
+    //     *results.entry(label).or_default() += 1;
+    // });
+
+    // let result = results
+    //     .into_iter()
+    //     .max_by_key(|ds| ds.1)
+    //     .expect("can't get max result");
+
+    "dd".to_string()
+    // result.0
 }
 
 pub fn file2matrix(file_path: &str) -> Result<Vec<SampleData>> {
