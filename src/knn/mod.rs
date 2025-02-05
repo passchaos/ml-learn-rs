@@ -3,10 +3,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use anyhow::Result;
-use ndarray::{Array1, Array2, Axis};
-
-use crate::{Data, SampleData};
+use ndarray::{Array, Array1, Array2, Axis};
 
 pub fn classify(
     input: Array1<f64>,
@@ -15,8 +12,6 @@ pub fn classify(
     // sample_datas: &[SampleData],
     k: usize,
 ) -> String {
-    let data_set_size = input.len_of(Axis(0));
-
     let diff_mat = input - data_set;
     let sq_diff_mat = diff_mat.pow2();
     println!("diff mat: {diff_mat:?} {sq_diff_mat:?}");
@@ -25,58 +20,51 @@ pub fn classify(
     let distances = sq_distances.sqrt();
     println!("sq distances: {sq_distances:?} {distances:?}");
 
-    // let mut data_info: Vec<_> = sample_datas
-    //     .iter()
-    //     .map(|s_d| (s_d.data.distance(&input), s_d.label.to_string()))
-    //     .collect();
+    let a = sq_distances[0];
+    println!("a: {a}");
 
-    // println!("data info: {data_info:?}");
-    // data_info.sort_by(|a, b| a.0.total_cmp(&b.0));
-    // println!("sorted data info: {data_info:?}");
+    let a = distances[0];
+    println!("aa: {a}");
 
-    // let mut results: HashMap<String, u32> = HashMap::new();
+    let mut map: HashMap<_, usize> = HashMap::new();
 
-    // data_info.into_iter().take(k).for_each(|(_value, label)| {
-    //     *results.entry(label).or_default() += 1;
-    // });
+    // argsort for rust
+    let mut indices: Vec<_> = (0..distances.shape()[0]).collect();
+    indices.sort_by(|a, b| distances[*a].total_cmp(&distances[*b]));
 
-    // let result = results
-    //     .into_iter()
-    //     .max_by_key(|ds| ds.1)
-    //     .expect("can't get max result");
+    for i in 0..k {
+        let vote_label = &labels[indices[i]];
+        *map.entry(vote_label).or_default() += 1;
+    }
 
-    "dd".to_string()
-    // result.0
+    println!("indices: {indices:?} map= {map:?}");
+
+    map.into_iter().max_by_key(|ds| ds.1).unwrap().0.to_string()
 }
 
-pub fn file2matrix(file_path: &str) -> Result<Vec<SampleData>> {
+pub fn file2matrix(file_path: &str) -> (Array2<f64>, Array1<String>) {
     let file = std::fs::File::open(file_path).unwrap();
     let file = BufReader::new(file);
 
-    let mut result = vec![];
+    let mut arr = Array::zeros((0, 3));
+    let mut labels = Array::default(0);
 
     for line in file.lines() {
-        let line = line?;
-        let mut data: Vec<_> = line.split('\t').take(4).collect();
+        let line = line.unwrap();
+        let mut data: Vec<&str> = line.split('\t').take(4).collect();
 
-        let label = data
-            .pop()
-            .ok_or(anyhow::anyhow!("line has no 4th content: {data:?}"))?
-            .to_string();
+        let label = data.pop().unwrap().to_string();
 
-        let mut inner = vec![];
-        for d in data {
-            let v = d.trim().parse()?;
-            inner.push(v);
-        }
+        let data = Array1::from_vec(data).mapv(|a| a.trim().parse::<f64>().unwrap());
+        let data = data.into_shape_with_order((1, 3)).unwrap();
 
-        result.push(SampleData {
-            data: Data { inner },
-            label,
-        });
+        arr.append(Axis(0), data.view()).unwrap();
+        labels
+            .append(Axis(0), Array1::from(vec![label]).view())
+            .unwrap();
     }
 
-    Ok(result)
+    (arr, labels)
 }
 
 pub fn auto_norm(data_set: &[f64]) -> (Vec<f64>, f64, f64) {

@@ -1,5 +1,7 @@
 use anyhow::Result;
-use ndarray::{Array, arr2, array, s};
+use egui::Color32;
+use egui_plot::{PlotPoints, Points};
+use ndarray::{Array, Array1, ArrayBase, ArrayView1, ViewRepr, arr2, array, s};
 use plotly::{
     Layout, Plot, Scatter,
     common::{Marker, Mode, Title},
@@ -7,68 +9,6 @@ use plotly::{
 };
 
 mod knn;
-
-#[derive(Debug)]
-struct Data {
-    inner: Vec<f64>,
-}
-
-impl Data {
-    fn distance(&self, other: &Data) -> f64 {
-        let value: f64 = self
-            .inner
-            .iter()
-            .zip(other.inner.iter())
-            .map(|(a, b)| (a - b).powi(2))
-            .sum();
-
-        value.sqrt()
-    }
-}
-
-#[derive(Debug)]
-struct SampleData {
-    data: Data,
-    label: String,
-}
-
-fn ndarray_learn() {
-    let arr = arr2(&[[1.0, 2., 3.], [4., 5., 6.], [7., 8., 9.]]);
-    println!("arr: {arr:?}");
-
-    let arr1 = array![1.0, 2.0, 3.];
-    let arr2 = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
-
-    let a = arr2[[0, 0]];
-
-    println!(
-        "array len: arr1= {} arr2= {} arr2_axis_0= {}",
-        arr1.len(),
-        arr2.len(),
-        arr2.len_of(ndarray::Axis(0))
-    );
-
-    println!("sum: {}", arr2.sum_axis(ndarray::Axis(1)));
-
-    let arr3 = arr2.powi(2);
-    println!("arr3: {arr3:?}");
-
-    let arr4 = arr3.sqrt();
-    println!("arr4: {arr4:?}");
-
-    let arr5 = Array::<f64, _>::zeros((3, 2, 4));
-    println!("arr5: {arr5:?}");
-
-    let arr6 = Array::linspace(0., 1., 10);
-    println!("arr6: {arr6:?}");
-
-    let arr7 = Array::<f64, _>::eye(3);
-    println!(
-        "arr7: {arr7:?} {:?} slice= {:?}",
-        arr7.sin(),
-        arr7.slice(s![.., 0])
-    );
-}
 
 fn main() -> Result<()> {
     let input = array![0.0, 0.0];
@@ -80,38 +20,36 @@ fn main() -> Result<()> {
         "B".to_string()
     ];
 
-    knn::classify(input, data_set, labels, 3);
-    // ndarray_learn();
-    return Ok(());
+    let res = knn::classify(input, data_set, labels, 3);
+    println!("result: {res}");
 
-    // let sample_datas: Vec<_> = vec![
-    //     (vec![1.0, 1.1], "A"),
-    //     (vec![1.0, 1.0], "A"),
-    //     (vec![0.0, 0.0], "B"),
-    //     (vec![0.0, 0.1], "B"),
-    // ]
-    // .into_iter()
-    // .map(|(inner, label)| SampleData {
-    //     data: Data { inner },
-    //     label: label.to_string(),
-    // })
-    // .collect();
+    let file_path = format!(
+        "{}/Work/ml-learn-rs/MachineLearningInActionSourceCode/Ch02/datingTestSet2.txt",
+        dirs::home_dir().unwrap().to_str().unwrap()
+    );
 
-    // let input = Data {
-    //     inner: vec![0.0, 0.0],
-    // };
-    // let res = knn::classify(input, &sample_datas, 3);
-    // println!("result: {res:?}");
+    let (data, labels) = knn::file2matrix(&file_path);
 
-    // let file_path = format!(
-    //     "{}/Work/MachineLearningInActionSourceCode/Ch02/datingTestSet2.txt",
-    //     dirs::home_dir()
-    //         .and_then(|hd| hd.to_str().map(|s| s.to_string()))
-    //         .ok_or(anyhow::anyhow!("can't get home dir"))?
-    // );
+    let a = data.slice(s![.., 0]);
+    let b = data.slice(s![.., 1]);
+    let c = data.slice(s![.., 2]);
 
-    // let samples = knn::file2matrix(&file_path)?;
-    // println!("samples: {samples:?}");
+    let weight: Array1<u8> = labels.iter().map(|a| a.parse().unwrap()).collect();
+
+    let data = PlotDemo {
+        a,
+        b,
+        c,
+        weight,
+        relation: Relation::AB,
+    };
+
+    eframe::run_native(
+        "Plot",
+        eframe::NativeOptions::default(),
+        Box::new(|_cc| Ok(Box::new(data))),
+    )
+    .unwrap();
 
     // let licheng_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[0]).collect();
     // let (licheng_normed_values, licheng_range, licheng_min) = knn::auto_norm(&licheng_values);
@@ -144,4 +82,68 @@ fn main() -> Result<()> {
     // plt.show();
 
     Ok(())
+}
+
+#[derive(PartialEq)]
+enum Relation {
+    AB,
+    AC,
+    BC,
+}
+
+struct PlotDemo<'a> {
+    a: ArrayView1<'a, f64>,
+    b: ArrayView1<'a, f64>,
+    c: ArrayView1<'a, f64>,
+    weight: Array1<u8>,
+    relation: Relation,
+}
+
+impl<'a> eframe::App for PlotDemo<'a> {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::SidePanel::left("side_panel").show(ctx, |ui| {
+            ui.heading("Settings");
+
+            ui.vertical(|ui| {
+                ui.radio_value(&mut self.relation, Relation::AB, "A_B");
+                ui.radio_value(&mut self.relation, Relation::AC, "A_C");
+                ui.radio_value(&mut self.relation, Relation::BC, "B_C");
+            });
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui_plot::Plot::new("plot").show(ui, |plot_ui| {
+                let (x, y) = match self.relation {
+                    Relation::AB => (self.a, self.b),
+                    Relation::AC => (self.a, self.c),
+                    Relation::BC => (self.b, self.c),
+                };
+
+                let data = x
+                    .iter()
+                    .zip(y.iter())
+                    .map(|(a, b)| [*a, *b])
+                    .zip(self.weight.iter());
+
+                for (point, weight) in data {
+                    let sine_points = PlotPoints::new(vec![point]);
+
+                    let radius = 4.0 * *weight as f32;
+
+                    let r = 75;
+                    let g = 38;
+                    let b = 46;
+
+                    let color = Color32::from_rgb(r * weight, g * weight, b * weight);
+
+                    plot_ui.points(
+                        Points::new(sine_points)
+                            .name("Sine")
+                            .radius(radius)
+                            .color(color),
+                    );
+                }
+            });
+        });
+    }
 }
