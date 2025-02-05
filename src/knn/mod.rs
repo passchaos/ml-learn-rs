@@ -3,7 +3,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use ndarray::{Array, Array1, Array2, Axis};
+use ndarray::{Array, Array1, Array2, ArrayView1, Axis};
 
 pub fn classify(
     input: Array1<f64>,
@@ -67,13 +67,13 @@ pub fn file2matrix(file_path: &str) -> (Array2<f64>, Array1<String>) {
     (arr, labels)
 }
 
-pub fn auto_norm(data_set: &[f64]) -> (Vec<f64>, f64, f64) {
-    let min_value = *data_set.iter().min_by(|a, b| a.total_cmp(b)).unwrap();
-    let max_value = *data_set.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+pub fn auto_norm<'a>(data_set: ArrayView1<'a, f64>) -> (Array1<f64>, f64, f64) {
+    let min_value = data_set.iter().min_by(|a, b| a.total_cmp(b)).unwrap();
+    let max_value = data_set.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
 
     let range = max_value - min_value;
 
     let res_set = data_set.iter().map(|v| (v - min_value) / range).collect();
 
-    (res_set, range, min_value)
+    (res_set, range, *min_value)
 }

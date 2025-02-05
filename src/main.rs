@@ -31,55 +31,38 @@ fn main() -> Result<()> {
     let (data, labels) = knn::file2matrix(&file_path);
 
     let a = data.slice(s![.., 0]);
+    let (a, a_range, a_min) = knn::auto_norm(a);
+
     let b = data.slice(s![.., 1]);
+    let (b, b_range, b_min) = knn::auto_norm(b);
+
     let c = data.slice(s![.., 2]);
+    let (c, c_range, c_min) = knn::auto_norm(c);
 
     let weight: Array1<u8> = labels.iter().map(|a| a.parse().unwrap()).collect();
 
     let data = PlotDemo {
-        a,
-        b,
-        c,
+        a: (a.view(), "每年获得的飞行客里程数"),
+        b: (b.view(), "玩视频游戏所耗时间百分比"),
+        c: (c.view(), "每周消费的冰激凌公升数"),
         weight,
         relation: Relation::AB,
     };
 
+    println!(
+        "fonts info: {:?}",
+        egui::FontDefinitions::default().families
+    );
+
     eframe::run_native(
         "Plot",
         eframe::NativeOptions::default(),
-        Box::new(|_cc| Ok(Box::new(data))),
+        Box::new(|cc| {
+            add_font(&cc.egui_ctx);
+            Ok(Box::new(data))
+        }),
     )
     .unwrap();
-
-    // let licheng_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[0]).collect();
-    // let (licheng_normed_values, licheng_range, licheng_min) = knn::auto_norm(&licheng_values);
-    // println!("normed values= {licheng_normed_values:?} range= {licheng_range} min= {licheng_min}");
-
-    // let game_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[1]).collect();
-    // let (game_normed_values, game_range, game_min) = knn::auto_norm(&game_values);
-    // let ice_cream_values: Vec<_> = samples.iter().map(|sd| sd.data.inner[2]).collect();
-    // let (ice_normed_values, ice_range, ice_min) = knn::auto_norm(&ice_cream_values);
-
-    // let labels: Vec<usize> = samples.iter().map(|sd| sd.label.parse().unwrap()).collect();
-
-    // let size_arr: Vec<_> = labels.iter().map(|ll| ll * 5).collect();
-    // let marker = Marker::new()
-    //     .size_array(size_arr.clone())
-    //     .color_array(size_arr);
-
-    // let trace1 = Scatter::new(licheng_normed_values, game_normed_values)
-    //     .mode(Mode::Markers)
-    //     .marker(marker);
-
-    // let layout = Layout::new()
-    //     .x_axis(Axis::new().title("每年获取的飞行里程数"))
-    //     .y_axis(Axis::new().title("玩视频游戏所耗时间百分比"))
-    //     .legend(Legend::new());
-
-    // let mut plt = Plot::new();
-    // plt.add_trace(trace1);
-    // plt.set_layout(layout);
-    // plt.show();
 
     Ok(())
 }
@@ -92,9 +75,9 @@ enum Relation {
 }
 
 struct PlotDemo<'a> {
-    a: ArrayView1<'a, f64>,
-    b: ArrayView1<'a, f64>,
-    c: ArrayView1<'a, f64>,
+    a: (ArrayView1<'a, f64>, &'a str),
+    b: (ArrayView1<'a, f64>, &'a str),
+    c: (ArrayView1<'a, f64>, &'a str),
     weight: Array1<u8>,
     relation: Relation,
 }
@@ -111,39 +94,57 @@ impl<'a> eframe::App for PlotDemo<'a> {
             });
         });
 
+        let (x, y) = match self.relation {
+            Relation::AB => (self.a, self.b),
+            Relation::AC => (self.a, self.c),
+            Relation::BC => (self.b, self.c),
+        };
+
+        let data =
+            x.0.iter()
+                .zip(y.0.iter())
+                .map(|(a, b)| [*a, *b])
+                .zip(self.weight.iter());
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui_plot::Plot::new("plot").show(ui, |plot_ui| {
-                let (x, y) = match self.relation {
-                    Relation::AB => (self.a, self.b),
-                    Relation::AC => (self.a, self.c),
-                    Relation::BC => (self.b, self.c),
-                };
+            egui_plot::Plot::new("plot")
+                .x_axis_label(x.1)
+                .y_axis_label(y.1)
+                .show(ui, |plot_ui| {
+                    for (point, weight) in data {
+                        let sine_points = PlotPoints::new(vec![point]);
 
-                let data = x
-                    .iter()
-                    .zip(y.iter())
-                    .map(|(a, b)| [*a, *b])
-                    .zip(self.weight.iter());
+                        let radius = 4.0 * *weight as f32;
 
-                for (point, weight) in data {
-                    let sine_points = PlotPoints::new(vec![point]);
+                        let r = 75;
+                        let g = 38;
+                        let b = 46;
 
-                    let radius = 4.0 * *weight as f32;
+                        let color = Color32::from_rgb(r * weight, g * weight, b * weight);
 
-                    let r = 75;
-                    let g = 38;
-                    let b = 46;
-
-                    let color = Color32::from_rgb(r * weight, g * weight, b * weight);
-
-                    plot_ui.points(
-                        Points::new(sine_points)
-                            .name("Sine")
-                            .radius(radius)
-                            .color(color),
-                    );
-                }
-            });
+                        plot_ui.points(
+                            Points::new(sine_points)
+                                .name("Sine")
+                                .radius(radius)
+                                .color(color),
+                        );
+                    }
+                });
         });
     }
+}
+
+fn add_font(ctx: &egui::Context) {
+    let mut font_definitions = egui::FontDefinitions::default();
+
+    font_definitions.font_data.insert("pingfang".to_string(),
+        std::sync::Arc::new(egui::FontData::from_static(include_bytes!("/System/Library/AssetsV2/com_apple_MobileAsset_Font7/3419f2a427639ad8c8e139149a287865a90fa17e.asset/AssetData/PingFang.ttc"))));
+
+    font_definitions
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default()
+        .insert(0, "pingfang".to_string());
+
+    ctx.set_fonts(font_definitions);
 }
