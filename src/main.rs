@@ -137,8 +137,11 @@ impl<'a> eframe::App for PlotDemo<'a> {
 fn add_font(ctx: &egui::Context) {
     let mut font_definitions = egui::FontDefinitions::default();
 
-    font_definitions.font_data.insert("pingfang".to_string(),
-        std::sync::Arc::new(egui::FontData::from_static(include_bytes!("/System/Library/AssetsV2/com_apple_MobileAsset_Font7/3419f2a427639ad8c8e139149a287865a90fa17e.asset/AssetData/PingFang.ttc"))));
+    let font_data = egui::FontData::from_static(include_bytes!("../assets/fonts/PingFang.ttc"));
+
+    font_definitions
+        .font_data
+        .insert("pingfang".to_string(), std::sync::Arc::new(font_data));
 
     font_definitions
         .families
