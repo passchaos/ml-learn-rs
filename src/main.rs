@@ -1,13 +1,7 @@
 use anyhow::Result;
 use egui::Color32;
-use egui_plot::{PlotPoints, Points};
-use ndarray::{Array, Array1, ArrayBase, ArrayView1, ViewRepr, arr2, array, s};
-use plotly::{
-    Layout, Plot, Scatter,
-    common::{Marker, Mode, Title},
-    layout::{Axis, Legend},
-};
-
+use egui_plot::{Legend, PlotPoints, Points};
+use ndarray::{Array1, ArrayView1, array, s};
 mod knn;
 
 fn main() -> Result<()> {
@@ -83,7 +77,7 @@ struct PlotDemo<'a> {
 }
 
 impl<'a> eframe::App for PlotDemo<'a> {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             ui.heading("Settings");
 
@@ -107,7 +101,10 @@ impl<'a> eframe::App for PlotDemo<'a> {
                 .zip(self.weight.iter());
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            let legend = Legend::default().position(egui_plot::Corner::RightTop);
+
             egui_plot::Plot::new("plot")
+                .legend(legend)
                 .x_axis_label(x.1)
                 .y_axis_label(y.1)
                 .show(ui, |plot_ui| {
@@ -122,9 +119,15 @@ impl<'a> eframe::App for PlotDemo<'a> {
 
                         let color = Color32::from_rgb(r * weight, g * weight, b * weight);
 
+                        let label = match *weight {
+                            1 => "不喜欢",
+                            2 => "魅力一般",
+                            _ => "极具魅力",
+                        };
+
                         plot_ui.points(
                             Points::new(sine_points)
-                                .name("Sine")
+                                .name(label)
                                 .radius(radius)
                                 .color(color),
                         );
