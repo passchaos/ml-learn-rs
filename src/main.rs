@@ -24,21 +24,18 @@ fn main() -> Result<()> {
 
     let (data, labels) = knn::file2matrix(&file_path);
 
-    let a = data.slice(s![.., 0]);
-    let (a, a_range, a_min) = knn::auto_norm(a);
+    let (normed_data, ranges, min_vals) = knn::auto_norm(&data);
 
-    let b = data.slice(s![.., 1]);
-    let (b, b_range, b_min) = knn::auto_norm(b);
-
-    let c = data.slice(s![.., 2]);
-    let (c, c_range, c_min) = knn::auto_norm(c);
+    let a = normed_data.slice(s![.., 0]);
+    let b = normed_data.slice(s![.., 1]);
+    let c = normed_data.slice(s![.., 2]);
 
     let weight: Array1<u8> = labels.iter().map(|a| a.parse().unwrap()).collect();
 
     let data = PlotDemo {
-        a: (a.view(), "每年获得的飞行客里程数"),
-        b: (b.view(), "玩视频游戏所耗时间百分比"),
-        c: (c.view(), "每周消费的冰激凌公升数"),
+        a: (a, "每年获得的飞行客里程数"),
+        b: (b, "玩视频游戏所耗时间百分比"),
+        c: (c, "每周消费的冰激凌公升数"),
         weight,
         relation: Relation::AB,
     };
@@ -79,7 +76,7 @@ struct PlotDemo<'a> {
 impl<'a> eframe::App for PlotDemo<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.heading("Settings");
+            ui.heading("炼丹");
 
             ui.vertical(|ui| {
                 ui.radio_value(&mut self.relation, Relation::AB, "A_B");
@@ -153,4 +150,47 @@ fn add_font(ctx: &egui::Context) {
         .insert(0, "pingfang".to_string());
 
     ctx.set_fonts(font_definitions);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ndarray_axis() {
+        let a = array![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+        let b = array![[[1, 2, 3]], [[4, 5, 6]], [[7, 8, 9]]];
+        let c = array![[[1, 2, 3], [4, 5, 6], [7, 8, 9]]];
+
+        // println!("a: {a:?} b: {b:?} c: {c:?}");
+        // println!("a dim: {:?}", a.dim());
+        // println!("axis 0: {:?}", a.slice(s![0, ..]));
+        // println!("axis lanes: {:?}", a.lanes(ndarray::Axis(0)));
+
+        let vals = [
+            a.view().into_dyn(),
+            b.view().into_dyn(),
+            c.view().into_dyn(),
+        ];
+        for val in vals {
+            println!("val: {val:?}");
+            let a_0_min = val.map_axis(ndarray::Axis(0), |av| {
+                println!("av: {av:?}");
+                av.into_iter().min_by(|a, b| a.cmp(b)).unwrap()
+            });
+            println!("min vals: {a_0_min:?}");
+            //     let n = val.ndim();
+            //     println!("val: {val:?} dim= {:?}", val.dim());
+
+            //     for i in 0..n {
+            //         val.dim();
+            //         println!("dim= {} len= {}", i, val.len_of(ndarray::Axis(i)));
+            //     }
+        }
+        // for val in vals {
+        //     println!("val: {val:?}");
+        //     println!("dim: {:?}", val.dim());
+        //     println!("len: {}", val.len());
+        // }
+    }
 }
