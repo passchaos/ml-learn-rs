@@ -2,9 +2,13 @@ use anyhow::Result;
 use egui::Color32;
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array1, ArrayView1, array, s};
+
 mod knn;
+mod tools;
 
 fn main() -> Result<()> {
+    tools::init_logs();
+
     let input = array![0.0, 0.0];
     let data_set = array![[1.0, 1.1], [1.0, 1.0], [0.0, 0.0], [0.0, 0.1]];
     let labels = array![
@@ -14,17 +18,12 @@ fn main() -> Result<()> {
         "B".to_string()
     ];
 
-    let res = knn::classify(input, data_set, labels, 3);
-    println!("result: {res}");
+    let res = knn::classify(input.view(), data_set.view(), labels.view(), 3);
+    tracing::info!("result: {res}");
 
-    let file_path = format!(
-        "{}/Work/ml-learn-rs/MachineLearningInActionSourceCode/Ch02/datingTestSet2.txt",
-        dirs::home_dir().unwrap().to_str().unwrap()
-    );
+    let (data, labels) = knn::file2matrix(tools::full_file_path("Ch02/datingTestSet2.txt"));
 
-    let (data, labels) = knn::file2matrix(&file_path);
-
-    let (normed_data, ranges, min_vals) = knn::auto_norm(&data);
+    let (normed_data, ranges, min_vals) = knn::auto_norm(data.view());
 
     let a = normed_data.slice(s![.., 0]);
     let b = normed_data.slice(s![.., 1]);

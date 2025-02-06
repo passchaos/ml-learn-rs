@@ -1,30 +1,31 @@
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader},
+    path::Path,
 };
 
 use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
 
 pub fn classify(
-    input: Array1<f64>,
-    data_set: Array2<f64>,
-    labels: Array1<String>,
+    input: ArrayView1<f64>,
+    data_set: ArrayView2<f64>,
+    labels: ArrayView1<String>,
     // sample_datas: &[SampleData],
     k: usize,
 ) -> String {
-    let diff_mat = input - data_set;
+    let diff_mat = &input - &data_set;
     let sq_diff_mat = diff_mat.pow2();
-    println!("diff mat: {diff_mat:?} {sq_diff_mat:?}");
+    tracing::debug!("diff mat: {diff_mat:?} {sq_diff_mat:?}");
 
     let sq_distances = sq_diff_mat.sum_axis(Axis(1));
     let distances = sq_distances.sqrt();
-    println!("sq distances: {sq_distances:?} {distances:?}");
+    tracing::debug!("sq distances: {sq_distances:?} {distances:?}");
 
     let a = sq_distances[0];
-    println!("a: {a}");
+    tracing::debug!("a: {a}");
 
     let a = distances[0];
-    println!("aa: {a}");
+    tracing::debug!("aa: {a}");
 
     let mut map: HashMap<_, usize> = HashMap::new();
 
@@ -37,12 +38,12 @@ pub fn classify(
         *map.entry(vote_label).or_default() += 1;
     }
 
-    println!("indices: {indices:?} map= {map:?}");
+    tracing::debug!("indices: {indices:?} map= {map:?}");
 
     map.into_iter().max_by_key(|ds| ds.1).unwrap().0.to_string()
 }
 
-pub fn file2matrix(file_path: &str) -> (Array2<f64>, Array1<String>) {
+pub fn file2matrix<P: AsRef<Path>>(file_path: P) -> (Array2<f64>, Array1<String>) {
     let file = std::fs::File::open(file_path).unwrap();
     let file = BufReader::new(file);
 
@@ -67,13 +68,65 @@ pub fn file2matrix(file_path: &str) -> (Array2<f64>, Array1<String>) {
     (arr, labels)
 }
 
-pub fn auto_norm(data_set: &Array2<f64>) -> (Array2<f64>, Array1<f64>, Array1<f64>) {
+pub fn auto_norm(data_set: ArrayView2<f64>) -> (Array2<f64>, Array1<f64>, Array1<f64>) {
     let min_vals = data_set.fold_axis(Axis(0), f64::INFINITY, |a, b| a.min(*b));
     let max_vals = data_set.fold_axis(Axis(0), f64::NEG_INFINITY, |a, b| a.max(*b));
 
     let range = max_vals - &min_vals;
 
-    let res_set = (data_set - &min_vals) / &range;
+    let res_set = (&data_set - &min_vals.view()) / &range;
 
     (res_set, range, min_vals)
+}
+
+#[cfg(test)]
+mod tests {
+    use ndarray::s;
+
+    use super::*;
+
+    #[test]
+    fn test_dating_classify() {
+        crate::tools::init_logs();
+
+        let ho_ratio = 0.1;
+
+        let (data_set, labels) =
+            file2matrix(crate::tools::full_file_path("Ch02/datingTestSet2.txt"));
+        let (norm_data_set, _, _) = auto_norm(data_set.view());
+
+        let m = norm_data_set.shape()[0];
+
+        let mut err_count = 0;
+
+        let num_test_vecs = (m as f64 * ho_ratio) as usize;
+
+        for i in 0..m {
+            let classifier_result = classify(
+                norm_data_set.slice(s![i, ..]),
+                norm_data_set.slice(s![num_test_vecs..m, ..]),
+                labels.slice(s![num_test_vecs..m]),
+                3,
+            );
+            tracing::info!(
+                "the classifier came back with: {} the real answer is: {}",
+                classifier_result,
+                labels[i]
+            );
+
+            if classifier_result != labels[i] {
+                tracing::warn!("meet error: err_count= {err_count}");
+                err_count += 1;
+            }
+        }
+
+        tracing::info!(
+            "the total error rate is {}, err_count= {err_count} num_test= {num_test_vecs}",
+            err_count as f32 / num_test_vecs as f32
+        );
+
+        // let test_data = Array1::from_vec(vec![40920.0, 8.326976, 0.953952]);
+        // let res = classify(test_data, norm_data_set, labels, 3);
+        // println!("res: {res}");
+    }
 }
