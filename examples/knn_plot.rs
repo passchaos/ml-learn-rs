@@ -1,12 +1,11 @@
-use anyhow::Result;
+extern crate ml_learn_rs;
+
 use egui::Color32;
 use egui_plot::{Legend, PlotPoints, Points};
+use ml_learn_rs::{knn, tools};
 use ndarray::{Array1, ArrayView1, array, s};
 
-mod knn;
-mod tools;
-
-fn main() -> Result<()> {
+fn main() {
     tools::init_logs();
 
     let input = array![0.0, 0.0];
@@ -53,8 +52,6 @@ fn main() -> Result<()> {
         }),
     )
     .unwrap();
-
-    Ok(())
 }
 
 #[derive(PartialEq)]
@@ -149,47 +146,4 @@ fn add_font(ctx: &egui::Context) {
         .insert(0, "pingfang".to_string());
 
     ctx.set_fonts(font_definitions);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ndarray_axis() {
-        let a = array![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-        let b = array![[[1, 2, 3]], [[4, 5, 6]], [[7, 8, 9]]];
-        let c = array![[[1, 2, 3], [4, 5, 6], [7, 8, 9]]];
-
-        // println!("a: {a:?} b: {b:?} c: {c:?}");
-        // println!("a dim: {:?}", a.dim());
-        // println!("axis 0: {:?}", a.slice(s![0, ..]));
-        // println!("axis lanes: {:?}", a.lanes(ndarray::Axis(0)));
-
-        let vals = [
-            a.view().into_dyn(),
-            b.view().into_dyn(),
-            c.view().into_dyn(),
-        ];
-        for val in vals {
-            println!("val: {val:?}");
-            let a_0_min = val.map_axis(ndarray::Axis(0), |av| {
-                println!("av: {av:?}");
-                av.into_iter().min_by(|a, b| a.cmp(b)).unwrap()
-            });
-            println!("min vals: {a_0_min:?}");
-            //     let n = val.ndim();
-            //     println!("val: {val:?} dim= {:?}", val.dim());
-
-            //     for i in 0..n {
-            //         val.dim();
-            //         println!("dim= {} len= {}", i, val.len_of(ndarray::Axis(i)));
-            //     }
-        }
-        // for val in vals {
-        //     println!("val: {val:?}");
-        //     println!("dim: {:?}", val.dim());
-        //     println!("len: {}", val.len());
-        // }
-    }
 }

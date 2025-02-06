@@ -81,7 +81,7 @@ pub fn auto_norm(data_set: ArrayView2<f64>) -> (Array2<f64>, Array1<f64>, Array1
 
 #[cfg(test)]
 mod tests {
-    use ndarray::s;
+    use ndarray::{array, s};
 
     use super::*;
 
@@ -92,7 +92,7 @@ mod tests {
         let ho_ratio = 0.1;
 
         let (data_set, labels) =
-            file2matrix(crate::tools::full_file_path("Ch02/datingTestSet2.txt"));
+            file2matrix(crate::tools::full_file_path("Ch02/datingTestSet.txt"));
         let (norm_data_set, _, _) = auto_norm(data_set.view());
 
         let m = norm_data_set.shape()[0];
@@ -101,7 +101,7 @@ mod tests {
 
         let num_test_vecs = (m as f64 * ho_ratio) as usize;
 
-        for i in 0..m {
+        for i in 0..num_test_vecs {
             let classifier_result = classify(
                 norm_data_set.slice(s![i, ..]),
                 norm_data_set.slice(s![num_test_vecs..m, ..]),
@@ -128,5 +128,40 @@ mod tests {
         // let test_data = Array1::from_vec(vec![40920.0, 8.326976, 0.953952]);
         // let res = classify(test_data, norm_data_set, labels, 3);
         // println!("res: {res}");
+    }
+
+    #[test]
+    fn test_classify_person() {
+        crate::tools::init_logs();
+
+        let result_list = ["not at all", "in small doses", "in large doses"];
+
+        let mut input = String::new();
+
+        print!("percentage of time spent playing video game?");
+        std::io::stdin().read_line(&mut input).unwrap();
+        let percent_tats: f64 = input.parse().unwrap();
+
+        input = String::new();
+        print!("frequent flier miles earned per year?");
+        std::io::stdin().read_line(&mut input).unwrap();
+        let ff_miles: f64 = input.parse().unwrap();
+
+        input = String::new();
+        print!("liters of ice cream consumed per year?");
+        std::io::stdin().read_line(&mut input).unwrap();
+        let ice_cream: f64 = input.parse().unwrap();
+
+        let (dating_data_mat, dating_labels) =
+            file2matrix(crate::tools::full_file_path("Ch02/datingTestSet2.txt"));
+
+        let (norm_mat, ranges, min_vals) = auto_norm(dating_data_mat.view());
+
+        let in_arr = (array![ff_miles, percent_tats, ice_cream] - min_vals) / ranges;
+
+        let classifier_result = classify(in_arr.view(), norm_mat.view(), dating_labels.view(), 3);
+
+        let v: usize = classifier_result.parse().unwrap();
+        println!("You will probably like this person: {}", result_list[v - 1]);
     }
 }
