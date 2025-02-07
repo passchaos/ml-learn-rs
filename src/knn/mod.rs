@@ -81,7 +81,7 @@ pub fn auto_norm(data_set: ArrayView2<f64>) -> (Array2<f64>, Array1<f64>, Array1
 
 #[cfg(test)]
 mod tests {
-    use ndarray::s;
+    use ndarray::{arr0, array, s};
 
     use super::*;
 
@@ -128,5 +128,87 @@ mod tests {
         // let test_data = Array1::from_vec(vec![40920.0, 8.326976, 0.953952]);
         // let res = classify(test_data, norm_data_set, labels, 3);
         // println!("res: {res}");
+    }
+
+    fn img2vector<P: AsRef<Path>>(filename: P) -> Array1<f64> {
+        let file = std::fs::File::open(filename).unwrap();
+        let mut reader = std::io::BufReader::new(file);
+
+        let mut res = Array::zeros(1 * 1024);
+
+        let mut idx = 0;
+        for _ in 0..32 {
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+
+            for d in line.chars().take(32).map(|c| c.to_digit(10).unwrap()) {
+                res[idx] = d as f64;
+                idx += 1;
+            }
+        }
+
+        res
+    }
+
+    #[test]
+    fn test_digit_classify() {
+        crate::tools::init_logs();
+
+        // training
+        let entries =
+            std::fs::read_dir(crate::tools::full_file_path("Ch02/digits/trainingDigits")).unwrap();
+
+        let mut data_set = Array::zeros((0, 1024));
+        let mut labels = Array::default(0);
+
+        for entry in entries {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let data = img2vector(path);
+
+            let file_full_name = entry.file_name().into_string().unwrap();
+            let file_name = file_full_name.split('.').next().unwrap();
+
+            let label = file_name.split('_').next().unwrap().to_string();
+
+            data_set.push(Axis(0), data.view()).unwrap();
+            labels.push(Axis(0), arr0(label).view()).unwrap();
+        }
+
+        // test
+        let entries =
+            std::fs::read_dir(crate::tools::full_file_path("Ch02/digits/testDigits")).unwrap();
+
+        let mut count = 0;
+        let mut err_count = 0;
+
+        for entry in entries {
+            count += 1;
+
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let data = img2vector(path);
+
+            let file_full_name = entry.file_name().into_string().unwrap();
+            let file_name = file_full_name.split('.').next().unwrap();
+
+            let label = file_name.split('_').next().unwrap().to_string();
+
+            let classifier_result = classify(data.view(), data_set.view(), labels.view(), 3);
+
+            if classifier_result != label {
+                err_count += 1;
+            }
+            tracing::info!(
+                "the classifier came back with: {} the real answer is: {}",
+                classifier_result,
+                label
+            );
+        }
+
+        tracing::info!(
+            "the total error rate is {}, err_count= {err_count} num_test= {count}",
+            err_count as f32 / count as f32
+        );
     }
 }
