@@ -1,0 +1,3 @@
+[submodule "MachineLearningInActionSourceCode"]
+	path = MachineLearningInActionSourceCode
+	url = git@github.com:passchaos/MachineLearningInActionSourceCode.git
