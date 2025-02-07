@@ -87,12 +87,11 @@ mod tests {
 
     #[test]
     fn test_dating_classify() {
-        crate::tools::init_logs();
+        tracing_subscriber::fmt().init();
 
         let ho_ratio = 0.1;
 
-        let (data_set, labels) =
-            file2matrix(crate::tools::full_file_path("Ch02/datingTestSet.txt"));
+        let (data_set, labels) = file2matrix(tools::full_file_path("Ch02/datingTestSet.txt"));
         let (norm_data_set, _, _) = auto_norm(data_set.view());
 
         let m = norm_data_set.shape()[0];
@@ -152,11 +151,11 @@ mod tests {
 
     #[test]
     fn test_digit_classify() {
-        crate::tools::init_logs();
+        tracing_subscriber::fmt().init();
 
         // training
         let entries =
-            std::fs::read_dir(crate::tools::full_file_path("Ch02/digits/trainingDigits")).unwrap();
+            std::fs::read_dir(tools::full_file_path("Ch02/digits/trainingDigits")).unwrap();
 
         let mut data_set = Array::zeros((0, 1024));
         let mut labels = Array::default(0);
@@ -176,8 +175,7 @@ mod tests {
         }
 
         // test
-        let entries =
-            std::fs::read_dir(crate::tools::full_file_path("Ch02/digits/testDigits")).unwrap();
+        let entries = std::fs::read_dir(tools::full_file_path("Ch02/digits/testDigits")).unwrap();
 
         let mut count = 0;
         let mut err_count = 0;

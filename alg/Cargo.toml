@@ -1,0 +1,12 @@
+[package]
+name = "alg"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ndarray = {workspace = true}
+tracing = "0.1.41"
+
+[dev-dependencies]
+tracing-subscriber = "0.3.19"
+tools = {workspace = true}

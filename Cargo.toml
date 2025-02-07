@@ -1,14 +1,15 @@
-[package]
-name = "ml-learn-rs"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "2"
+members = [
+    "alg",
+    "tools",
+    "examples/*"
+]
 
-[dependencies]
-anyhow = "1.0.95"
-dirs = "6.0.0"
-eframe = "0.31.0"
-egui = "0.31.0"
-egui_plot = "0.31.0"
-ndarray = "0.16.1"
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
+[workspace.dependencies]
+alg = { path = "alg" }
+tools = { path = "tools" }
+ndarray = "*"
+
+[profile.dev]
+opt-level = 3

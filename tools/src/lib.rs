@@ -8,7 +8,3 @@ pub fn full_file_path(relative_path: &str) -> PathBuf {
 
     PathBuf::from(dir).join(relative_path)
 }
-
-pub fn init_logs() {
-    tracing_subscriber::fmt().init();
-}

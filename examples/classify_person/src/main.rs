@@ -1,13 +1,11 @@
-extern crate ml_learn_rs;
-
 use std::io::Write;
 
 use ndarray::array;
 
-use ml_learn_rs::{knn, tools};
+use alg::knn;
 
 fn main() {
-    tools::init_logs();
+    tracing_subscriber::fmt().init();
 
     let result_list = ["not at all", "in small doses", "in large doses"];
 
@@ -33,7 +31,7 @@ fn main() {
     let ice_cream: f64 = input.trim().parse().unwrap();
 
     let (dating_data_mat, dating_labels) =
-        knn::file2matrix(crate::tools::full_file_path("Ch02/datingTestSet2.txt"));
+        knn::file2matrix(tools::full_file_path("Ch02/datingTestSet2.txt"));
 
     let (norm_mat, ranges, min_vals) = knn::auto_norm(dating_data_mat.view());
 
