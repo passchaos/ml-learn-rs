@@ -1,15 +1,11 @@
 [workspace]
 resolver = "2"
-members = [
-    "alg",
-    "tools",
-    "examples/*"
-]
+members = ["alg", "tools", "examples/*"]
 
 [workspace.dependencies]
 alg = { path = "alg" }
 tools = { path = "tools" }
 ndarray = "*"
 
-[profile.dev]
+[profile.dev.package."*"]
 opt-level = 3

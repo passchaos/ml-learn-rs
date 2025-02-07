@@ -1,17 +1,12 @@
-use bevy::prelude::*;
-use bevy::{
-    DefaultPlugins,
-    app::{App, Update},
-};
-use bevy_egui::{EguiContexts, EguiPlugin};
+extern crate ml_learn_rs;
+
 use egui::Color32;
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2, array, s};
-
-use alg::knn;
+use ml_learn_rs::{knn, tools};
+use ndarray::{array, s, Array1, ArrayView1};
 
 fn main() {
-    tracing_subscriber::fmt().init();
+    tools::init_logs();
 
     let input = array![0.0, 0.0];
     let data_set = array![[1.0, 1.1], [1.0, 1.0], [0.0, 0.0], [0.0, 0.1]];
@@ -29,54 +24,29 @@ fn main() {
 
     let (normed_data, ranges, min_vals) = knn::auto_norm(data.view());
 
+    let a = normed_data.slice(s![.., 0]);
+    let b = normed_data.slice(s![.., 1]);
+    let c = normed_data.slice(s![.., 2]);
+
     let weight: Array1<u8> = labels.iter().map(|a| a.parse().unwrap()).collect();
 
-    let data = UiState {
-        data: normed_data,
-        // a: (a, "每年获得的飞行客里程数"),
-        // b: (b, "玩视频游戏所耗时间百分比"),
-        // c: (c, "每周消费的冰激凌公升数"),
+    let data = PlotDemo {
+        a: (a, "每年获得的飞行客里程数"),
+        b: (b, "玩视频游戏所耗时间百分比"),
+        c: (c, "每周消费的冰激凌公升数"),
         weight,
         relation: Relation::AB,
     };
 
-    println!(
-        "fonts info: {:?}",
-        egui::FontDefinitions::default().families
-    );
-
-    App::new()
-        .insert_resource(data)
-        .add_plugins(DefaultPlugins)
-        .add_plugins(EguiPlugin)
-        .add_systems(Update, ui_example_system)
-        .add_systems(Startup, setup)
-        .run();
-
-    // eframe::run_native(
-    //     "Plot",
-    //     eframe::NativeOptions::default(),
-    //     Box::new(|cc| {
-    //         add_font(&cc.egui_ctx);
-    //         Ok(Box::new(data))
-    //     }),
-    // )
-    // .unwrap();
-}
-
-fn setup(mut contexts: EguiContexts) {
-    let mut visuals = egui::Visuals::light();
-    visuals.faint_bg_color = Color32::from_rgb(255, 255, 255);
-    contexts.ctx_mut().set_style(egui::Style {
-        visuals,
-        ..Default::default()
-    });
-
-    add_font(contexts.ctx_mut());
-}
-
-fn ui_example_system(mut ui_state: ResMut<UiState>, mut contexts: EguiContexts) {
-    ui_state.as_mut().plot(contexts.ctx_mut());
+    eframe::run_native(
+        "Plot",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| {
+            add_font(&cc.egui_ctx);
+            Ok(Box::new(data))
+        }),
+    )
+    .unwrap();
 }
 
 #[derive(PartialEq)]
@@ -86,21 +56,16 @@ enum Relation {
     BC,
 }
 
-#[derive(Resource)]
-struct UiState {
-    data: Array2<f64>,
+struct PlotDemo<'a> {
+    a: (ArrayView1<'a, f64>, &'a str),
+    b: (ArrayView1<'a, f64>, &'a str),
+    c: (ArrayView1<'a, f64>, &'a str),
     weight: Array1<u8>,
     relation: Relation,
 }
 
-impl eframe::App for UiState {
+impl<'a> eframe::App for PlotDemo<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.plot(ctx);
-    }
-}
-
-impl UiState {
-    fn plot(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             ui.heading("炼丹");
 
@@ -111,18 +76,10 @@ impl UiState {
             });
         });
 
-        let a = self.data.slice(s![.., 0]);
-        let b = self.data.slice(s![.., 1]);
-        let c = self.data.slice(s![.., 2]);
-
-        let a = (a, "每年获得的飞行客里程数");
-        let b = (b, "玩视频游戏所耗时间百分比");
-        let c = (c, "每周消费的冰激凌公升数");
-
         let (x, y) = match self.relation {
-            Relation::AB => (a, b),
-            Relation::AC => (a, c),
-            Relation::BC => (b, c),
+            Relation::AB => (self.a, self.b),
+            Relation::AC => (self.a, self.c),
+            Relation::BC => (self.b, self.c),
         };
 
         let data =
@@ -150,10 +107,10 @@ impl UiState {
 
                         let color = Color32::from_rgb(r * weight, g * weight, b * weight);
 
-                        let (label, colora) = match *weight {
-                            1 => ("不喜欢", Color32::GRAY),
-                            2 => ("魅力一般", Color32::BROWN),
-                            _ => ("极具魅力", Color32::RED),
+                        let label = match *weight {
+                            1 => "不喜欢",
+                            2 => "魅力一般",
+                            _ => "极具魅力",
                         };
 
                         plot_ui.points(
@@ -171,8 +128,7 @@ impl UiState {
 fn add_font(ctx: &egui::Context) {
     let mut font_definitions = egui::FontDefinitions::default();
 
-    let font_data =
-        egui::FontData::from_static(include_bytes!("../../../assets/fonts/PingFang.ttc"));
+    let font_data = egui::FontData::from_static(include_bytes!("../assets/fonts/PingFang.ttc"));
 
     font_definitions
         .font_data
