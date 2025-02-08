@@ -150,10 +150,10 @@ impl UiState {
 
                         let color = Color32::from_rgb(r * weight, g * weight, b * weight);
 
-                        let (label, colora) = match *weight {
-                            1 => ("不喜欢", Color32::GRAY),
-                            2 => ("魅力一般", Color32::BROWN),
-                            _ => ("极具魅力", Color32::RED),
+                        let label = match *weight {
+                            1 => "不喜欢",
+                            2 => "魅力一般",
+                            _ => "极具魅力",
                         };
 
                         plot_ui.points(
