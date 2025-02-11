@@ -1,10 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{Debug, Display},
-    hash::Hash,
+    fmt::Debug,
 };
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, IndexLonger, s};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 
 pub fn calculate_shannon_entropy(data_set: ArrayView2<String>) -> f64 {
     let num_entries = data_set.len_of(Axis(0)) as f64;
@@ -48,7 +47,7 @@ pub fn choose_best_feature_to_split(data_set: ArrayView2<String>) -> Option<usiz
     let mut data = HashMap::new();
 
     let base_ent = calculate_shannon_entropy(data_set);
-    tracing::info!("base entropy: {base_ent}");
+    tracing::debug!("base entropy: {base_ent}");
 
     for i in 0..num_features {
         let axis_data = data_set.index_axis(Axis(1), i);
@@ -64,7 +63,7 @@ pub fn choose_best_feature_to_split(data_set: ArrayView2<String>) -> Option<usiz
             // ret_data_set.len()
             let value_probe = ret_data_set.len_of(Axis(0)) as f64 / data_set.len_of(Axis(0)) as f64;
 
-            tracing::info!(
+            tracing::debug!(
                 "index= {} value= {} value_probe= {value_probe} ent= {ent} ret= {}",
                 i,
                 value,
@@ -77,15 +76,15 @@ pub fn choose_best_feature_to_split(data_set: ArrayView2<String>) -> Option<usiz
         data.insert(i, new_ent);
     }
 
-    tracing::info!("all entropy: base= {base_ent} indexes= {data:?}");
+    tracing::debug!("all entropy: base= {base_ent} indexes= {data:?}");
 
     let (index, ent) = data.into_iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap();
 
     if base_ent > ent {
-        tracing::info!("best feature index: {index} ent: {ent}");
+        tracing::debug!("best feature index: {index} ent: {ent}");
         Some(index)
     } else {
-        tracing::info!("best feature index: -1 ent: {ent}");
+        tracing::debug!("best feature index: -1 ent: {ent}");
         None
     }
 }
@@ -101,8 +100,8 @@ pub fn majority_cnt(class_list: ArrayView1<String>) -> String {
     value.0.to_owned()
 }
 
-#[derive(Debug)]
-struct MapValue {
+#[derive(Debug, Default)]
+pub struct MapValue {
     map: HashMap<String, MapValue>,
 }
 
@@ -116,29 +115,66 @@ impl From<HashMap<String, MapValue>> for MapValue {
 // property是1维数组，每一个元素是一个特征，其长度等于data_set的列数-1
 pub fn create_tree(
     data_set: ArrayView2<String>,
-    features: ArrayView1<String>,
-) -> HashMap<String, MapValue> {
+    features: &mut Array1<String>,
+    map: &mut HashMap<String, MapValue>,
+) {
+    tracing::info!("data set: {data_set}");
+
+    let labels = data_set.index_axis(Axis(1), data_set.len_of(Axis(1)) - 1);
+
+    tracing::info!("labels: {labels}");
+
+    // 类别都一样
+    if labels.iter().filter(|a| **a == labels[0]).count() == labels.len() {
+        let item = labels.into_iter().next().unwrap();
+        map.insert(item.to_string(), MapValue::default());
+
+        tracing::info!("final same");
+
+        return;
+    }
+
+    if data_set.index_axis(Axis(0), 0).len() == 1 {
+        let item = majority_cnt(labels);
+
+        map.insert(item.to_string(), MapValue::default());
+
+        tracing::info!("final majo");
+        return;
+    }
+
     // 排除没有熵减的情况
     let idx = choose_best_feature_to_split(data_set.clone()).unwrap();
 
-    // data_set
-    // data_set.slice(info)
+    let values: HashSet<_> = data_set.index_axis(Axis(1), idx).into_iter().collect();
 
-    // split_data_set(data_set, idx, )
-    let mut map = HashMap::new();
+    let feature = features.get(idx).unwrap().clone();
 
-    let mut inner_map = HashMap::new();
+    features.remove_index(Axis(0), idx);
 
-    let value = MapValue { map: inner_map };
+    let mut outer_map = MapValue::default();
 
-    map.insert("top".to_string(), value);
+    for value in values {
+        let data = split_data_set(data_set, idx, value);
+        let view = data.view();
 
-    map
+        tracing::info!(
+            "data: index= {idx} value= {value} splited_data= {data} new_ref_data= {view}"
+        );
+
+        let mut inner_map = MapValue::default();
+
+        create_tree(view, features, &mut inner_map.map);
+
+        outer_map.map.insert(value.to_string(), inner_map);
+    }
+
+    map.insert(feature, outer_map);
 }
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{ArrayBase, array};
+    use ndarray::{array, s};
 
     use super::*;
 
@@ -202,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_dicision_tree() {
+    fn test_create_dicision_tree_1() {
         tracing_subscriber::fmt().init();
 
         let data_set = array![
@@ -214,26 +250,32 @@ mod tests {
         ]
         .map(|a| a.to_string());
 
-        let map = create_tree(data_set.view(), array![].view());
-        tracing::info!("map: {map:?}");
+        let mut map = HashMap::new();
 
-        let a = array![[1, 2, 3], [4, 5, 6]];
+        let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
 
-        for row in a.rows() {
-            tracing::info!("row: {row}");
-        }
+        create_tree(data_set.view(), &mut features, &mut map);
+        tracing::info!("map: {map:#?}");
+    }
 
-        let idx = 0;
-        for row in a.axis_iter(Axis(idx)) {
-            tracing::info!("axis {idx}: {row}");
-        }
+    #[test]
+    fn test_create_dicision_tree_2() {
+        tracing_subscriber::fmt().init();
 
-        for lane in a.lanes(Axis(idx)) {
-            tracing::info!("lane {idx}: {lane}");
-        }
+        let data_set = array![
+            ["1", "1", "yes"],
+            ["1", "1", "yes"],
+            ["1", "0", "no"],
+            ["0", "1", "no"],
+            ["0", "1", "yes"],
+        ]
+        .map(|a| a.to_string());
 
-        for c in a.columns() {
-            tracing::info!("column: {c}");
-        }
+        let mut map = HashMap::new();
+
+        let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
+
+        create_tree(data_set.view(), &mut features, &mut map);
+        tracing::info!("map: {map:#?}");
     }
 }

@@ -27,7 +27,7 @@ fn main() {
 
     let (data, labels) = knn::file2matrix(tools::full_file_path("Ch02/datingTestSet2.txt"));
 
-    let (normed_data, ranges, min_vals) = knn::auto_norm(data.view());
+    let (normed_data, _ranges, _min_vals) = knn::auto_norm(data.view());
 
     let weight: Array1<u8> = labels.iter().map(|a| a.parse().unwrap()).collect();
 

@@ -81,7 +81,7 @@ pub fn auto_norm(data_set: ArrayView2<f64>) -> (Array2<f64>, Array1<f64>, Array1
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{arr0, array, s};
+    use ndarray::{arr0, s};
 
     use super::*;
 
