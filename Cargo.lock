@@ -2082,6 +2082,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dicision_tree_plot"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "egui-snarl",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,6 +2233,16 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
+]
+
+[[package]]
+name = "egui-snarl"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93d55cf28e422c85145b777e4ba86c0b8f84eb86ddbce1bd86f439a94caf3754"
+dependencies = [
+ "egui",
+ "slab",
 ]
 
 [[package]]
@@ -2912,7 +2931,7 @@ dependencies = [
  "log",
  "presser",
  "thiserror 1.0.69",
- "windows 0.54.0",
+ "windows 0.58.0",
 ]
 
 [[package]]
@@ -3350,7 +3369,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]

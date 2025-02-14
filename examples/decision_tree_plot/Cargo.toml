@@ -1,0 +1,9 @@
+[package]
+name = "dicision_tree_plot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+egui = "0.30"
+eframe = "0.30"
+egui-snarl = "0.6"

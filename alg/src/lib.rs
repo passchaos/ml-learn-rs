@@ -1,2 +1,2 @@
-pub mod dicision_tree;
+pub mod decision_tree;
 pub mod knn;
