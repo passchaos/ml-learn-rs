@@ -1,3 +1,4 @@
+use egui::{Sense, TextWrapMode};
 use egui_snarl::{
     Snarl,
     ui::{NodeLayout, PinPlacement, SnarlStyle, SnarlViewer},
@@ -13,20 +14,23 @@ fn main() {
     println!("Hello, world!");
 }
 
+#[derive(Debug)]
 enum Node {
     A,
     B,
+    C,
 }
 
+#[derive(Debug, Default)]
 struct DecisionTreeViewer;
 
 impl SnarlViewer<Node> for DecisionTreeViewer {
     fn title(&mut self, node: &Node) -> String {
-        "decision_tree".to_string()
+        format!("node_{node:?}")
     }
 
     fn inputs(&mut self, node: &Node) -> usize {
-        0
+        1
     }
 
     fn show_input(
@@ -36,11 +40,12 @@ impl SnarlViewer<Node> for DecisionTreeViewer {
         scale: f32,
         snarl: &mut Snarl<Node>,
     ) -> egui_snarl::ui::PinInfo {
-        todo!()
+        ui.label("parent");
+        egui_snarl::ui::PinInfo::default()
     }
 
     fn outputs(&mut self, node: &Node) -> usize {
-        0
+        1
     }
 
     fn show_output(
@@ -50,11 +55,63 @@ impl SnarlViewer<Node> for DecisionTreeViewer {
         scale: f32,
         snarl: &mut Snarl<Node>,
     ) -> egui_snarl::ui::PinInfo {
-        todo!()
+        ui.label("child");
+        egui_snarl::ui::PinInfo::default()
+    }
+
+    fn has_dropped_wire_menu(
+        &mut self,
+        src_pins: egui_snarl::ui::AnyPins,
+        snarl: &mut Snarl<Node>,
+    ) -> bool {
+        true
+    }
+
+    fn show_dropped_wire_menu(
+        &mut self,
+        pos: egui::Pos2,
+        ui: &mut egui::Ui,
+        scale: f32,
+        src_pins: egui_snarl::ui::AnyPins,
+        snarl: &mut Snarl<Node>,
+    ) {
+        ui.label("wire context");
+    }
+
+    fn has_wire_widget(
+        &mut self,
+        from: &egui_snarl::OutPinId,
+        to: &egui_snarl::InPinId,
+        snarl: &Snarl<Node>,
+    ) -> bool {
+        true
+    }
+
+    fn show_wire_widget(
+        &mut self,
+        from: &egui_snarl::OutPin,
+        to: &egui_snarl::InPin,
+        ui: &mut egui::Ui,
+        scale: f32,
+        snarl: &mut Snarl<Node>,
+    ) {
+        ui.label("annotation");
     }
 
     fn has_body(&mut self, node: &Node) -> bool {
         true
+    }
+
+    fn show_body(
+        &mut self,
+        node: egui_snarl::NodeId,
+        inputs: &[egui_snarl::InPin],
+        outputs: &[egui_snarl::OutPin],
+        ui: &mut egui::Ui,
+        scale: f32,
+        snarl: &mut Snarl<Node>,
+    ) {
+        ui.label("body container");
     }
 
     fn has_graph_menu(&mut self, pos: egui::Pos2, snarl: &mut Snarl<Node>) -> bool {
@@ -70,39 +127,170 @@ impl SnarlViewer<Node> for DecisionTreeViewer {
     ) {
         ui.label("Menu node");
 
-        if ui.button("Add node").clicked() {
+        if ui.button("Add node A").clicked() {
             snarl.insert_node(pos, Node::A);
+            ui.close_menu();
+        }
+
+        if ui.button("Add node B").clicked() {
+            snarl.insert_node(pos, Node::B);
             ui.close_menu();
         }
     }
 }
 
+#[derive(Debug, Default, PartialEq)]
+enum Enum {
+    #[default]
+    First,
+    Second,
+    Third,
+}
+
+#[derive(Debug, Default)]
 struct DecisionTreePlot {
     snarl: Snarl<Node>, // Define fields here
     viewer: DecisionTreeViewer,
+    counter: i32,
+    text: String,
+    my_f32: f32,
+    my_boolean: bool,
+    my_enum: Enum,
+    allowed_to_close: bool,
+    show_confirmation_dialog: bool,
 }
 
 impl DecisionTreePlot {
     fn new(cc: &eframe::CreationContext) -> Self {
-        let snarl = Snarl::new();
-        let viewer = DecisionTreeViewer;
-        // Initialize fields here
-        DecisionTreePlot { snarl, viewer }
+        Self::default()
+        // let snarl = Snarl::new();
+        // let viewer = DecisionTreeViewer;
+        // // Initialize fields here
+        // DecisionTreePlot {
+        //     snarl,
+        //     viewer,
+        //     counter: 10,
+        //     text: "default text".to_string(),
+        // }
     }
 }
 
 impl eframe::App for DecisionTreePlot {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.snarl
-                .show(&mut self.viewer, &default_style(), "decision_tree", ui);
+            ui.heading("Decision Tree Plot");
+
+            ui.horizontal(|ui| {
+                if ui.button("-").clicked() {
+                    self.counter -= 1;
+                }
+                ui.label(self.counter.to_string());
+                if ui.button("+").clicked() {
+                    self.counter += 1;
+                }
+            });
+
+            ui.hyperlink("https://baidu.com");
+            ui.text_edit_singleline(&mut self.text);
+            // ui.add(egui::Slider::new(&mut self.my_f32, 0.0..=100.0));
+            //
+            ui.add_sized([240.0, 120.0], egui::DragValue::new(&mut self.my_f32));
+            ui.add(egui::DragValue::new(&mut self.my_f32));
+
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                // ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            });
+
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            });
+
+            //
+            ui.separator();
+
+            ui.collapsing("Click to see what is hidden!", |ui| {
+                if ui.button("haha").clicked() {
+                    ui.label("haha");
+                }
+                ui.label("Not much, as it turns out");
+            });
+
+            ui.group(|ui| {
+                ui.label("Within a frame");
+                ui.set_min_height(200.0);
+                if ui.button("help").clicked() {
+                    ui.label("ddd");
+                }
+            });
+
+            ui.scope(|ui| {
+                ui.visuals_mut().override_text_color = Some(egui::Color32::RED);
+                ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
+                ui.label("This text will be red, monospace, and won't wrap to a new line");
+            });
+
+            // self.snarl
+            //     .show(&mut self.viewer, &default_style(), "decision_tree", ui);
         });
+
+        if ctx.input(|i| i.viewport().close_requested()) {
+            if self.allowed_to_close {
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.show_confirmation_dialog = true;
+            }
+        }
+
+        if self.show_confirmation_dialog {
+            egui::Window::new("Do you want to quit?")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("No").clicked() {
+                            self.show_confirmation_dialog = false;
+                            self.allowed_to_close = false;
+                        }
+
+                        if ui.button("Yes").clicked() {
+                            self.show_confirmation_dialog = false;
+                            self.allowed_to_close = true;
+                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    })
+                });
+        }
     }
 }
 
 const fn default_style() -> SnarlStyle {
     SnarlStyle {
-        node_layout: Some(NodeLayout::FlippedSandwich),
+        node_layout: Some(NodeLayout::Basic),
         pin_placement: Some(PinPlacement::Edge),
         pin_size: Some(7.0),
         node_frame: Some(egui::Frame {
