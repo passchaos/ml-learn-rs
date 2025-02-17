@@ -2178,11 +2178,15 @@ dependencies = [
 name = "dicision_tree_plot"
 version = "0.1.0"
 dependencies = [
+ "alg",
  "anyhow",
  "eframe",
  "egui",
  "egui_extras",
+ "ndarray",
  "tools",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

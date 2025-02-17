@@ -176,12 +176,25 @@ fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
     for (feature, value) in tree {
         for (inner_feature, inner_value) in &value.map {
             for (inner_inner_feature, inner_inner_value) in &inner_value.map {
-                c.push_str(&format!(
-                    "\"{feature}\" -> \"{inner_inner_feature}\" [label = \"{inner_feature}\"];\n"
-                ));
+                let len = c.len();
 
-                if !inner_inner_value.map.is_empty() {
+                let has_next_level = !inner_inner_value.map.is_empty();
+
+                if has_next_level {
+                    c.push_str(&format!(
+                        "   \"{feature}\" -> {inner_inner_feature} [label = \"{inner_feature}\"];\n"
+                    ));
+
                     tree_to_dot_content_impl(&inner_value.map, c);
+                } else {
+                    let target = format!("target_{len}");
+
+                    c.push_str(&format!(
+                        "   {target} [label = \"{inner_inner_feature}\"];\n"
+                    ));
+                    c.push_str(&format!(
+                        "   \"{feature}\" -> {target} [label = \"{inner_feature}\"];\n"
+                    ));
                 }
             }
         }
@@ -189,9 +202,11 @@ fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
 }
 
 pub fn tree_to_dot_content(tree: &HashMap<String, MapValue>) -> String {
-    let mut c = String::from("digraph Tree {");
+    let mut c = String::from("digraph Tree {\n");
 
     tree_to_dot_content_impl(tree, &mut c);
+
+    c.push_str("\n}");
 
     c
 }

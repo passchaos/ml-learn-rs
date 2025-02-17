@@ -1,14 +1,37 @@
+use std::collections::HashMap;
+
+use ndarray::array;
+
 use anyhow::Result;
 use egui::Image;
 
 fn main() {
+    let data_set = array![
+        ["1", "1", "yes"],
+        ["1", "1", "yes"],
+        ["1", "0", "no"],
+        ["0", "1", "no"],
+        ["0", "1", "no"],
+    ]
+    .map(|a| a.to_string());
+
+    let mut map = HashMap::new();
+
+    let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
+
+    alg::decision_tree::create_tree(data_set.view(), &mut features, &mut map);
+    tracing::info!("map: {map:#?}");
+
+    let dot_c = alg::decision_tree::tree_to_dot_content(&map);
+    tracing::info!("dot: {dot_c}");
+
     eframe::run_native(
         "Decision Tree Plot",
         eframe::NativeOptions::default(),
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
             tools::add_font(&cc.egui_ctx);
-            Ok(Box::new(DecisionTreePlot::default()))
+            Ok(Box::new(DecisionTreePlot::new(cc, dot_c)))
         }),
     )
     .unwrap();
@@ -21,8 +44,11 @@ struct DecisionTreePlot {
 }
 
 impl DecisionTreePlot {
-    fn new(_cc: &eframe::CreationContext) -> Self {
-        Self::default()
+    fn new(_cc: &eframe::CreationContext, dot_content: String) -> Self {
+        Self {
+            dot_content,
+            ..Default::default()
+        }
     }
 
     fn plot_graphviz(&mut self, ui: &mut egui::Ui) {
@@ -43,8 +69,6 @@ impl DecisionTreePlot {
             });
 
             if let Some(dts) = self.svg_s.as_ref() {
-                println!("svg_s len: {:?}", dts.as_ref().map(|s| s.len()));
-
                 match dts {
                     Ok(svg_d) => {
                         let s = tools::md5_hex(svg_d);
@@ -54,7 +78,7 @@ impl DecisionTreePlot {
                             svg_d.to_string().into_bytes(),
                         );
 
-                        ui.add_sized([800.0, 1000.0], image);
+                        ui.add_sized([600.0, 600.0], image);
                         // ui.add(image);
                     }
                     Err(e) => {
