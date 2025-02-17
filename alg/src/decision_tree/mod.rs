@@ -102,7 +102,7 @@ pub fn majority_cnt(class_list: ArrayView1<String>) -> String {
 
 #[derive(Debug, Default)]
 pub struct MapValue {
-    map: HashMap<String, MapValue>,
+    pub map: HashMap<String, MapValue>,
 }
 
 impl From<HashMap<String, MapValue>> for MapValue {

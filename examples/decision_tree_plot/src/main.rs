@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use alg::decision_tree::MapValue;
 use ndarray::array;
 
 use anyhow::Result;
@@ -13,7 +14,7 @@ fn main() {
         ["1", "1", "yes"],
         ["1", "0", "no"],
         ["0", "1", "no"],
-        ["0", "1", "yes"],
+        ["0", "1", "no"],
     ]
     .map(|a| a.to_string());
 
@@ -22,6 +23,16 @@ fn main() {
     let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
 
     alg::decision_tree::create_tree(data_set.view(), &mut features, &mut map);
+    tracing::info!("map: {map:#?}");
+
+    let mut inner_map = HashMap::new();
+    inner_map.insert("maybe".to_string(), MapValue::default());
+
+    map.get_mut("no surfacing")
+        .unwrap()
+        .map
+        .insert("3".to_string(), MapValue::from(inner_map));
+
     tracing::info!("map: {map:#?}");
 
     let dot_c = alg::decision_tree::tree_to_dot_content(&map);
