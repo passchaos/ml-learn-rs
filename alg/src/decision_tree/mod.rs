@@ -182,7 +182,7 @@ fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
 
                 if has_next_level {
                     c.push_str(&format!(
-                        "   \"{feature}\" -> {inner_inner_feature} [label = \"{inner_feature}\"];\n"
+                        "   \"{feature}\" -> \"{inner_inner_feature}\" [label = \"{inner_feature}\"];\n"
                     ));
 
                     tree_to_dot_content_impl(&inner_value.map, c);

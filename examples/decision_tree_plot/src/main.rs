@@ -6,12 +6,14 @@ use anyhow::Result;
 use egui::Image;
 
 fn main() {
+    tracing_subscriber::fmt().init();
+
     let data_set = array![
         ["1", "1", "yes"],
         ["1", "1", "yes"],
         ["1", "0", "no"],
         ["0", "1", "no"],
-        ["0", "1", "no"],
+        ["0", "1", "yes"],
     ]
     .map(|a| a.to_string());
 
