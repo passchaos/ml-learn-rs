@@ -172,6 +172,30 @@ pub fn create_tree(
     map.insert(feature, outer_map);
 }
 
+fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
+    for (feature, value) in tree {
+        for (inner_feature, inner_value) in &value.map {
+            for (inner_inner_feature, inner_inner_value) in &inner_value.map {
+                c.push_str(&format!(
+                    "\"{feature}\" -> \"{inner_inner_feature}\" [label = \"{inner_feature}\"];\n"
+                ));
+
+                if !inner_inner_value.map.is_empty() {
+                    tree_to_dot_content_impl(&inner_value.map, c);
+                }
+            }
+        }
+    }
+}
+
+pub fn tree_to_dot_content(tree: &HashMap<String, MapValue>) -> String {
+    let mut c = String::from("digraph Tree {");
+
+    tree_to_dot_content_impl(tree, &mut c);
+
+    c
+}
+
 #[cfg(test)]
 mod tests {
     use ndarray::{array, s};
@@ -256,6 +280,9 @@ mod tests {
 
         create_tree(data_set.view(), &mut features, &mut map);
         tracing::info!("map: {map:#?}");
+
+        let dot_c = tree_to_dot_content(&map);
+        tracing::info!("dot: {dot_c}");
     }
 
     #[test]

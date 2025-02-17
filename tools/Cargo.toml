@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 dirs = "*"
 egui = { workspace = true }
+layout-rs = { workspace = true }
+anyhow = { workspace = true }
+md-5 = { workspace = true }
