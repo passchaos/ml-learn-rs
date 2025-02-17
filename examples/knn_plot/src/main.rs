@@ -72,7 +72,7 @@ fn setup(mut contexts: EguiContexts) {
         ..Default::default()
     });
 
-    add_font(contexts.ctx_mut());
+    tools::add_font(contexts.ctx_mut());
 }
 
 fn ui_example_system(mut ui_state: ResMut<UiState>, mut contexts: EguiContexts) {
@@ -166,23 +166,4 @@ impl UiState {
                 });
         });
     }
-}
-
-fn add_font(ctx: &egui::Context) {
-    let mut font_definitions = egui::FontDefinitions::default();
-
-    let font_data =
-        egui::FontData::from_static(include_bytes!("../../../assets/fonts/PingFang.ttc"));
-
-    font_definitions
-        .font_data
-        .insert("pingfang".to_string(), std::sync::Arc::new(font_data));
-
-    font_definitions
-        .families
-        .entry(egui::FontFamily::Proportional)
-        .or_default()
-        .insert(0, "pingfang".to_string());
-
-    ctx.set_fonts(font_definitions);
 }

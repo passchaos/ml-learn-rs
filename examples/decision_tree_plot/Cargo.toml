@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-egui = "0.30"
-eframe = "0.30"
+tools = { workspace = true }
+egui = { workspace = true }
+eframe = { workspace = true }
+egui_extras = { workspace = true }
 egui-snarl = "0.6"
+layout-rs = "*"
+anyhow = "*"
+md-5 = { workspace = true }
+hex = { workspace = true }

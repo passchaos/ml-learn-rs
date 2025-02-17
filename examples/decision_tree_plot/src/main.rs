@@ -1,14 +1,44 @@
-use egui::{Sense, TextWrapMode};
+use std::sync::Arc;
+
+use anyhow::Result;
+use egui::{Image, Sense, TextWrapMode};
 use egui_snarl::{
     Snarl,
     ui::{NodeLayout, PinPlacement, SnarlStyle, SnarlViewer},
 };
 
+fn dot_to_svg(dot_s: &str) -> Result<String> {
+    let mut parser = layout::gv::DotParser::new(&dot_s);
+
+    let g = parser.process().map_err(|e| anyhow::anyhow!(e))?;
+
+    let mut g_b = layout::gv::GraphBuilder::new();
+    g_b.visit_graph(&g);
+    let mut vg = g_b.get();
+
+    let mut sw = layout::backends::svg::SVGWriter::new();
+    vg.do_it(false, false, false, &mut sw);
+
+    Ok(sw.finalize())
+}
+
 fn main() {
+    let svg_s = dot_to_svg(
+        r#"digraph G {
+            a -> b [label = "天涯"];
+            }"#,
+    )
+    .unwrap();
+
+    std::fs::write("/tmp/output.svg", &svg_s).unwrap();
+
     eframe::run_native(
         "Decision Tree Plot",
         eframe::NativeOptions::default(),
-        Box::new(|cc| Ok(Box::new(DecisionTreePlot::new(cc)))),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::new(DecisionTreePlot::default()))
+        }),
     )
     .unwrap();
     println!("Hello, world!");
@@ -151,6 +181,8 @@ enum Enum {
 struct DecisionTreePlot {
     snarl: Snarl<Node>, // Define fields here
     viewer: DecisionTreeViewer,
+    dot_content: String,
+    svg_s: Option<Result<String>>,
     counter: i32,
     text: String,
     my_f32: f32,
@@ -162,6 +194,11 @@ struct DecisionTreePlot {
 
 impl DecisionTreePlot {
     fn new(cc: &eframe::CreationContext) -> Self {
+        tools::add_font(&cc.egui_ctx);
+        // Self {
+        //     svg: svg.into_bytes(),
+        //     ..Default::default()
+        // }
         Self::default()
         // let snarl = Snarl::new();
         // let viewer = DecisionTreeViewer;
@@ -178,82 +215,121 @@ impl DecisionTreePlot {
 impl eframe::App for DecisionTreePlot {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Decision Tree Plot");
+            // ui.heading("Decision Tree Plot");
+
+            // ui.horizontal(|ui| {
+            //     if ui.button("-").clicked() {
+            //         self.counter -= 1;
+            //     }
+            //     ui.label(self.counter.to_string());
+            //     if ui.button("+").clicked() {
+            //         self.counter += 1;
+            //     }
+            // });
+
+            // ui.hyperlink("https://baidu.com");
+            // ui.text_edit_singleline(&mut self.text);
+            // // ui.add(egui::Slider::new(&mut self.my_f32, 0.0..=100.0));
+            // //
+            // ui.add_sized([240.0, 120.0], egui::DragValue::new(&mut self.my_f32));
+            // ui.add(egui::DragValue::new(&mut self.my_f32));
+
+            // ui.horizontal(|ui| {
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     // ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            // });
+
+            // ui.horizontal_wrapped(|ui| {
+            //     ui.spacing_mut().item_spacing.x = 0.0;
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            //     ui.radio_value(&mut self.my_enum, Enum::First, "First value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
+            //     ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
+            // });
+
+            // //
+            // ui.separator();
+
+            // ui.collapsing("Click to see what is hidden!", |ui| {
+            //     if ui.button("haha").clicked() {
+            //         ui.label("haha");
+            //     }
+            //     ui.label("Not much, as it turns out");
+            // });
+
+            // ui.group(|ui| {
+            //     ui.label("Within a frame");
+            //     ui.set_min_height(200.0);
+            //     if ui.button("help").clicked() {
+            //         ui.label("ddd");
+            //     }
+            // });
+
+            // ui.scope(|ui| {
+            //     ui.visuals_mut().override_text_color = Some(egui::Color32::RED);
+            //     ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
+            //     ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
+            //     ui.label("This text will be red, monospace, and won't wrap to a new line");
+            // });
+            //
 
             ui.horizontal(|ui| {
-                if ui.button("-").clicked() {
-                    self.counter -= 1;
-                }
-                ui.label(self.counter.to_string());
-                if ui.button("+").clicked() {
-                    self.counter += 1;
-                }
-            });
+                ui.vertical(|ui| {
+                    ui.label("graphviz content:");
+                    ui.text_edit_multiline(&mut self.dot_content);
+                    if ui.button("preview").clicked() {
+                        let dts = dot_to_svg(&self.dot_content);
 
-            ui.hyperlink("https://baidu.com");
-            ui.text_edit_singleline(&mut self.text);
-            // ui.add(egui::Slider::new(&mut self.my_f32, 0.0..=100.0));
-            //
-            ui.add_sized([240.0, 120.0], egui::DragValue::new(&mut self.my_f32));
-            ui.add(egui::DragValue::new(&mut self.my_f32));
+                        self.svg_s = Some(dts);
+                    }
+                });
 
-            ui.horizontal(|ui| {
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                // ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                // ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                // ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-            });
+                if let Some(dts) = self.svg_s.as_ref() {
+                    println!("svg_s len: {:?}", dts.as_ref().map(|s| s.len()));
 
-            ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-                ui.radio_value(&mut self.my_enum, Enum::First, "First value");
-                ui.radio_value(&mut self.my_enum, Enum::Second, "Second value");
-                ui.radio_value(&mut self.my_enum, Enum::Third, "Third value");
-            });
+                    match dts {
+                        Ok(svg_d) => {
+                            use md5::Digest;
+                            let mut hasher = md5::Md5::new();
+                            hasher.update(svg_d.as_bytes());
+                            let s = hex::encode(hasher.finalize());
 
-            //
-            ui.separator();
+                            let image = Image::from_bytes(
+                                format!("bytes://abc_{s}.svg",),
+                                svg_d.to_string().into_bytes(),
+                            );
 
-            ui.collapsing("Click to see what is hidden!", |ui| {
-                if ui.button("haha").clicked() {
-                    ui.label("haha");
-                }
-                ui.label("Not much, as it turns out");
-            });
-
-            ui.group(|ui| {
-                ui.label("Within a frame");
-                ui.set_min_height(200.0);
-                if ui.button("help").clicked() {
-                    ui.label("ddd");
+                            ui.add_sized([800.0, 1000.0], image);
+                            // ui.add(image);
+                        }
+                        Err(e) => {
+                            ui.colored_label(
+                                egui::Color32::RED,
+                                format!("parse dot meet failure: err= {e}"),
+                            );
+                        }
+                    }
                 }
             });
-
-            ui.scope(|ui| {
-                ui.visuals_mut().override_text_color = Some(egui::Color32::RED);
-                ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
-                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
-
-                ui.label("This text will be red, monospace, and won't wrap to a new line");
-            });
-
             // self.snarl
             //     .show(&mut self.viewer, &default_style(), "decision_tree", ui);
         });

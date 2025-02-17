@@ -6,6 +6,16 @@ members = ["alg", "tools", "examples/*"]
 alg = { path = "alg" }
 tools = { path = "tools" }
 ndarray = "*"
+egui = { version = "0.30.0" }
+eframe = { version = "0.30.0" }
+egui_extras = { version = "0.30.0", features = ["all_loaders"] }
+egui_plot = { version = "0.30.0" }
+md-5 = "*"
+hex = "*"
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[patch.crates-io]
+egui = { git = "https://github.com/passchaos/egui.git", branch = "feat/svg-text" }
+egui_extras = { git = "https://github.com/passchaos/egui.git", branch = "feat/svg-text" }

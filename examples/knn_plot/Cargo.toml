@@ -7,9 +7,9 @@ edition = "2024"
 alg = { workspace = true }
 tools = { workspace = true }
 ndarray = { workspace = true }
-eframe = "*"
-egui = "*"
-egui_plot = "*"
+eframe = { workspace = true }
+egui = { workspace = true }
+egui_plot = { workspace = true }
 bevy = "*"
 bevy_egui = "*"
 tracing = "*"
