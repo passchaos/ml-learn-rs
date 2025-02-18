@@ -69,7 +69,9 @@ impl DecisionTreePlot {
             ui.vertical(|ui| {
                 ui.label("graphviz content:");
 
-                let text_edit = egui::TextEdit::multiline(&mut self.dot_content).code_editor();
+                let text_edit = egui::TextEdit::multiline(&mut self.dot_content)
+                    .code_editor()
+                    .background_color(egui::Color32::LIGHT_GRAY);
                 ui.add(text_edit);
                 // ui.code_editor(&mut self.dot_content);
 
@@ -91,7 +93,7 @@ impl DecisionTreePlot {
                             svg_d.to_string().into_bytes(),
                         );
 
-                        ui.add_sized([600.0, 600.0], image);
+                        ui.add_sized([500.0, 500.0], image);
                         // ui.add(image);
                     }
                     Err(e) => {
@@ -108,7 +110,11 @@ impl DecisionTreePlot {
 
 impl eframe::App for DecisionTreePlot {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        let frame = egui::containers::Frame {
+            fill: egui::Color32::WHITE,
+            ..Default::default()
+        };
+        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             self.plot_graphviz(ui);
         });
     }

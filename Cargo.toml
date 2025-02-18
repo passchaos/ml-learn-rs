@@ -19,8 +19,8 @@ bevy_egui = "*"
 tracing = "*"
 tracing-subscriber = "*"
 
-[profile.dev.package."*"]
-opt-level = 3
+# [profile.dev.package."*"]
+# opt-level = 3
 
 [patch.crates-io]
 egui = { git = "https://github.com/passchaos/egui.git", branch = "feat/0.31-svg-text" }
