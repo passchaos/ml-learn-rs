@@ -3,7 +3,6 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use alg::decision_tree::MapValue;
 use ndarray::{Array2, array};
 
 use anyhow::Result;
@@ -95,7 +94,7 @@ impl DecisionTreePlot {
                             svg_d.to_string().into_bytes(),
                         );
 
-                        ui.add_sized([500.0, 500.0], image);
+                        ui.add_sized([1000.0, 1000.0], image);
                         // ui.add(image);
                     }
                     Err(e) => {
@@ -111,7 +110,7 @@ impl DecisionTreePlot {
 }
 
 impl eframe::App for DecisionTreePlot {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let frame = egui::containers::Frame {
             fill: egui::Color32::WHITE,
             ..Default::default()

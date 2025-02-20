@@ -146,6 +146,7 @@ pub fn create_tree(
 
     // 排除没有熵减的情况
     let idx = choose_best_feature_to_split(data_set.clone()).unwrap();
+    tracing::info!("features info: idx= {idx} features= {features:?}");
 
     let values: HashSet<_> = data_set.index_axis(Axis(1), idx).into_iter().collect();
 
@@ -165,7 +166,7 @@ pub fn create_tree(
 
         let mut inner_map = MapValue::default();
 
-        create_tree(view, features, &mut inner_map.map);
+        create_tree(view, &mut features.clone(), &mut inner_map.map);
 
         outer_map.map.insert(value.to_string(), inner_map);
     }
@@ -173,7 +174,7 @@ pub fn create_tree(
     map.insert(feature, outer_map);
 }
 
-fn classify(
+pub fn classify(
     tree: &HashMap<String, MapValue>,
     features: ArrayView1<String>,
     data: ArrayView1<String>,
@@ -197,30 +198,27 @@ fn classify(
     }
 }
 
-fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
-    for (feature, value) in tree {
-        for (inner_feature, inner_value) in &value.map {
-            for (inner_inner_feature, inner_inner_value) in &inner_value.map {
-                let len = c.len();
+fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, level: usize, c: &mut String) {
+    for (from, value) in tree {
+        if value.map.is_empty() {
+            continue;
+        }
 
+        let t_f = format!("\"{from}_{level}\"");
+        c.push_str(&format!("   {t_f} [label = \"{from}\"];\n"));
+
+        for (label, inner_value) in &value.map {
+            for (to, inner_inner_value) in &inner_value.map {
                 let has_next_level = !inner_inner_value.map.is_empty();
 
-                if has_next_level {
-                    c.push_str(&format!(
-                        "   \"{feature}\" -> \"{inner_inner_feature}\" [label = \"{inner_feature}\"];\n"
-                    ));
+                let label_suffix = if has_next_level { level + 1 } else { c.len() };
+                // let label_suffix = level + 1;
 
-                    tree_to_dot_content_impl(&inner_value.map, c);
-                } else {
-                    let target = format!("target_{len}");
+                let t_t = format!("\"{to}_{}\"", label_suffix);
 
-                    c.push_str(&format!(
-                        "   {target} [label = \"{inner_inner_feature}\"];\n"
-                    ));
-                    c.push_str(&format!(
-                        "   \"{feature}\" -> {target} [label = \"{inner_feature}\"];\n"
-                    ));
-                }
+                c.push_str(&format!("   {t_t} [label = \"{to}\"];\n"));
+                c.push_str(&format!("   {t_f} -> {t_t} [label = \"{label}\"];\n"));
+                tree_to_dot_content_impl(&inner_value.map, level + 1, c);
             }
         }
     }
@@ -229,7 +227,7 @@ fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
 pub fn tree_to_dot_content(tree: &HashMap<String, MapValue>) -> String {
     let mut c = String::from("digraph Tree {\n");
 
-    tree_to_dot_content_impl(tree, &mut c);
+    tree_to_dot_content_impl(tree, 0, &mut c);
 
     c.push_str("\n}");
 
