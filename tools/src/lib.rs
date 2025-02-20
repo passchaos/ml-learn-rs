@@ -2,6 +2,17 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
+pub fn init_log() {
+    let format = tracing_subscriber::fmt::format()
+        .with_level(true)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_file(true)
+        .with_source_location(true);
+
+    tracing_subscriber::fmt().event_format(format).init();
+}
+
 pub fn md5_hex(input: impl AsRef<[u8]>) -> String {
     use md5::Digest;
 

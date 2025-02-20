@@ -4,6 +4,7 @@ use std::{
 };
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+use serde::{Deserialize, Serialize};
 
 pub fn calculate_shannon_entropy(data_set: ArrayView2<String>) -> f64 {
     let num_entries = data_set.len_of(Axis(0)) as f64;
@@ -100,7 +101,7 @@ pub fn majority_cnt(class_list: ArrayView1<String>) -> String {
     value.0.to_owned()
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MapValue {
     pub map: HashMap<String, MapValue>,
 }
@@ -170,6 +171,30 @@ pub fn create_tree(
     }
 
     map.insert(feature, outer_map);
+}
+
+fn classify(
+    tree: &HashMap<String, MapValue>,
+    features: ArrayView1<String>,
+    data: ArrayView1<String>,
+) -> String {
+    assert_eq!(features.len(), data.len());
+
+    let first_feature = tree.keys().next().unwrap();
+
+    let f_idx = features.iter().position(|f| f == first_feature).unwrap();
+
+    let value = &data[f_idx];
+
+    let v = &tree[first_feature].map[value];
+
+    let v_key = v.map.keys().next().unwrap();
+    if v.map[v_key].map.is_empty() {
+        // 已经是叶子节点了
+        return v_key.to_string();
+    } else {
+        return classify(&v.map, features.clone(), data);
+    }
 }
 
 fn tree_to_dot_content_impl(tree: &HashMap<String, MapValue>, c: &mut String) {
@@ -291,13 +316,18 @@ mod tests {
 
         let mut map = HashMap::new();
 
-        let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
+        let features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
 
-        create_tree(data_set.view(), &mut features, &mut map);
+        create_tree(data_set.view(), &mut features.clone(), &mut map);
         tracing::info!("map: {map:#?}");
 
         let dot_c = tree_to_dot_content(&map);
         tracing::info!("dot: {dot_c}");
+
+        let data = array!["1", "1"].map(|a| a.to_string());
+
+        let feature = classify(&map, features.view(), data.view());
+        tracing::info!("classified feature: {feature}");
     }
 
     #[test]

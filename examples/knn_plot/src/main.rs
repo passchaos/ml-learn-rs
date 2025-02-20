@@ -1,9 +1,3 @@
-use bevy::prelude::*;
-use bevy::{
-    DefaultPlugins,
-    app::{App, Update},
-};
-use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::Color32;
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array1, Array2, array, s};
@@ -45,38 +39,15 @@ fn main() {
         egui::FontDefinitions::default().families
     );
 
-    App::new()
-        .insert_resource(data)
-        .add_plugins(DefaultPlugins)
-        .add_plugins(EguiPlugin)
-        .add_systems(Update, ui_example_system)
-        .add_systems(Startup, setup)
-        .run();
-
-    // eframe::run_native(
-    //     "Plot",
-    //     eframe::NativeOptions::default(),
-    //     Box::new(|cc| {
-    //         add_font(&cc.egui_ctx);
-    //         Ok(Box::new(data))
-    //     }),
-    // )
-    // .unwrap();
-}
-
-fn setup(mut contexts: EguiContexts) {
-    let mut visuals = egui::Visuals::light();
-    visuals.faint_bg_color = Color32::from_rgb(255, 255, 255);
-    contexts.ctx_mut().set_style(egui::Style {
-        visuals,
-        ..Default::default()
-    });
-
-    tools::add_font(contexts.ctx_mut());
-}
-
-fn ui_example_system(mut ui_state: ResMut<UiState>, mut contexts: EguiContexts) {
-    ui_state.as_mut().plot(contexts.ctx_mut());
+    eframe::run_native(
+        "Plot",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| {
+            tools::add_font(&cc.egui_ctx);
+            Ok(Box::new(data))
+        }),
+    )
+    .unwrap();
 }
 
 #[derive(PartialEq)]
@@ -86,7 +57,6 @@ enum Relation {
     BC,
 }
 
-#[derive(Resource)]
 struct UiState {
     data: Array2<f64>,
     weight: Array1<u8>,

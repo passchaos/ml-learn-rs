@@ -1,38 +1,40 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader},
+};
 
 use alg::decision_tree::MapValue;
-use ndarray::array;
+use ndarray::{Array2, array};
 
 use anyhow::Result;
 use egui::Image;
 
 fn main() {
-    tracing_subscriber::fmt().init();
+    tools::init_log();
 
-    let data_set = array![
-        ["1", "1", "yes"],
-        ["1", "1", "yes"],
-        ["1", "0", "no"],
-        ["0", "1", "no"],
-        ["0", "1", "no"],
-    ]
-    .map(|a| a.to_string());
+    let file = tools::full_file_path("Ch03/lenses.txt");
+
+    let reader = BufReader::new(std::fs::File::open(file).unwrap());
+
+    let mut nrows = 0;
+
+    let data = reader
+        .lines()
+        .into_iter()
+        .map(|line| {
+            nrows += 1;
+            let line = line.unwrap().trim().to_string();
+            line.split('\t').map(|a| a.to_string()).collect::<Vec<_>>()
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let data_set = Array2::from_shape_vec((nrows, 5), data).unwrap();
+    let features = array!["age", "prescript", "astigmatic", "tearRate"].map(|a| a.to_string());
 
     let mut map = HashMap::new();
 
-    let mut features = array!["no surfacing", "flippers"].mapv(|a| a.to_string());
-
-    alg::decision_tree::create_tree(data_set.view(), &mut features, &mut map);
-    tracing::info!("map: {map:#?}");
-
-    let mut inner_map = HashMap::new();
-    inner_map.insert("maybe".to_string(), MapValue::default());
-
-    map.get_mut("no surfacing")
-        .unwrap()
-        .map
-        .insert("3".to_string(), MapValue::from(inner_map));
-
+    alg::decision_tree::create_tree(data_set.view(), &mut features.clone(), &mut map);
     tracing::info!("map: {map:#?}");
 
     let dot_c = alg::decision_tree::tree_to_dot_content(&map);
