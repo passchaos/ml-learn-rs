@@ -18,6 +18,7 @@ tracing = "*"
 tracing-subscriber = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
+regex = "*"
 
 # [profile.dev.package."*"]
 # opt-level = 3
