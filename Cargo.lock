@@ -634,7 +634,12 @@ dependencies = [
 name = "classify_naive_bayes"
 version = "0.1.0"
 dependencies = [
+ "alg",
+ "ndarray",
+ "rand",
  "regex",
+ "tools",
+ "tracing",
 ]
 
 [[package]]

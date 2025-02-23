@@ -2,47 +2,34 @@ use std::collections::HashSet;
 
 use ndarray::{Array1, ArrayView1, ArrayView2, Axis, s};
 
-fn load_data_set() -> Vec<(u32, Vec<&'static str>)> {
-    vec![
-        (
-            0,
-            vec![
-                "my", "dog", "has", "has", "flea", "problems", "help", "please",
-            ],
-        ),
-        (
-            1,
-            vec!["maybe", "not", "take", "him", "to", "dog", "park", "stupid"],
-        ),
-        (
-            0,
-            vec!["my", "dalmation", "is", "so", "cute", "I", "love", "him"],
-        ),
-        (1, vec!["stop", "posting", "stupid", "worthless", "garbage"]),
-        (
-            0,
-            vec![
-                "mr", "licks", "ate", "my", "steak", "how", "to", "stop", "him",
-            ],
-        ),
-        (
-            1,
-            vec!["quit", "buying", "worthless", "dog", "food", "stupid"],
-        ),
+#[allow(dead_code)]
+fn load_data_set() -> (Vec<u32>, Vec<Vec<String>>) {
+    let data = vec![
+        vec![
+            "my", "dog", "has", "has", "flea", "problems", "help", "please",
+        ],
+        vec!["maybe", "not", "take", "him", "to", "dog", "park", "stupid"],
+        vec!["my", "dalmation", "is", "so", "cute", "I", "love", "him"],
+        vec!["stop", "posting", "stupid", "worthless", "garbage"],
+        vec![
+            "mr", "licks", "ate", "my", "steak", "how", "to", "stop", "him",
+        ],
+        vec!["quit", "buying", "worthless", "dog", "food", "stupid"],
     ]
+    .into_iter()
+    .map(|a| a.into_iter().map(|a| a.to_string()).collect())
+    .collect();
+
+    (vec![0, 1, 0, 1, 0, 1], data)
 }
 
-fn create_vocab_list(data_set: &[(u32, Vec<&'static str>)]) -> Vec<&'static str> {
-    let set: HashSet<_> = data_set
-        .into_iter()
-        .map(|a| a.1.clone())
-        .flatten()
-        .collect();
+pub fn create_vocab_list(data_set: Vec<Vec<String>>) -> Vec<String> {
+    let data: HashSet<_> = data_set.into_iter().flatten().collect();
 
-    set.into_iter().collect()
+    data.into_iter().collect()
 }
 
-fn words_set_to_vec(vocab_list: &[&'static str], input_set: &[&str]) -> Array1<u32> {
+pub fn words_set_to_vec(vocab_list: &[String], input_set: &[String]) -> Array1<u32> {
     let mut vec = ndarray::Array1::zeros(vocab_list.len());
 
     for word in input_set {
@@ -54,7 +41,7 @@ fn words_set_to_vec(vocab_list: &[&'static str], input_set: &[&str]) -> Array1<u
     vec
 }
 
-fn train_naive_bayes_0(
+pub fn train_naive_bayes_0(
     train_matrix: ArrayView2<u32>,
     train_category: ArrayView1<u32>,
 ) -> (Array1<f32>, Array1<f32>, f32) {
@@ -86,7 +73,7 @@ fn train_naive_bayes_0(
     (p0_vect, p1_vect, p_abusive)
 }
 
-fn classify_naive_bayes(
+pub fn classify_naive_bayes(
     data_vec: ArrayView1<u32>,
     p0_vec: ArrayView1<f32>,
     p1_vec: ArrayView1<f32>,
@@ -107,22 +94,21 @@ mod tests {
 
     #[test]
     fn test_bayes_data_set() {
-        let data_set = load_data_set();
-        let vocab_list = create_vocab_list(&data_set);
+        let (labels, data_set) = load_data_set();
+        let vocab_list = create_vocab_list(data_set.clone());
 
         println!("vocab list: {vocab_list:?}");
 
         // let input1 = data_set.iter().map(|a| a.1.clone()).nth(0).unwrap();
         // let vec1 = words_set_to_vec(&vocab_list, &input1);
+        let labels = Array1::from_vec(labels);
 
         let mut train_mat = Array2::zeros([0, vocab_list.len()]);
-        let mut labels = Array1::zeros(data_set.len());
 
-        for (idx, (label, vec)) in data_set.into_iter().enumerate() {
+        for vec in data_set.into_iter() {
             let vec = words_set_to_vec(&vocab_list, &vec);
 
             train_mat.push(Axis(0), vec.view()).unwrap();
-            labels[idx] = label;
         }
         // println!("vec1: {vec1:?}");
         println!("labels: {labels:?} train_mat= {train_mat:?}");
@@ -130,7 +116,9 @@ mod tests {
         let (p0_vect, p1_vect, p_abusive) = train_naive_bayes_0(train_mat.view(), labels.view());
         println!("p0_vect: {p0_vect:?} p1_vect: {p1_vect:?} p_abusive: {p_abusive}");
 
-        let test_input = vec![vec!["love", "my", "dalmation"], vec!["stupid", "garbage"]];
+        let test_input = vec![vec!["love", "my", "dalmation"], vec!["stupid", "garbage"]]
+            .into_iter()
+            .map(|a| a.into_iter().map(|a| a.to_string()).collect::<Vec<_>>());
 
         for input in test_input {
             let test_doc = words_set_to_vec(&vocab_list, &input);
