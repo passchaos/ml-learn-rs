@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 ndarray = { workspace = true }
+ndarray-linalg = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
