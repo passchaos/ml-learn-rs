@@ -1,0 +1,11 @@
+[package]
+name = "logistic_regression"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alg = { workspace = true }
+tracing = { workspace = true }
+tools = { workspace = true }
+ndarray = { workspace = true }
+openblas-src = { workspace = true }

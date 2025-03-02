@@ -5,7 +5,8 @@ members = ["alg", "tools", "examples/*"]
 [workspace.dependencies]
 alg = { path = "alg" }
 tools = { path = "tools" }
-ndarray = "*"
+ndarray = { version = "*", features = ["blas"] }
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
 ndarray-linalg = { version = "*", features = ["openblas-system"] }
 egui = { version = "0.31.0" }
 eframe = { version = "0.31.0" }
