@@ -1,6 +1,6 @@
-use ndarray::{Array2, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 
-pub fn gradient_ascent(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> Array2<f64> {
+pub fn gradient_ascent(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> Array1<f64> {
     let m = data_in.shape()[0];
     let n = data_in.shape()[1];
     let alpha = 0.001;
@@ -17,10 +17,10 @@ pub fn gradient_ascent(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> 
         weights = weights + alpha * data_in.t().dot(&error);
     }
 
-    weights
+    weights.index_axis_move(Axis(1), 0)
 }
 
-pub fn stoc_grad_ascent_0(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> Array2<f64> {
+pub fn stoc_grad_ascent_0(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> Array1<f64> {
     let m = data_in.shape()[0];
     let n = data_in.shape()[1];
 
@@ -40,5 +40,5 @@ pub fn stoc_grad_ascent_0(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) 
         weights = weights + alpha * error * data_i.t().to_owned();
     }
 
-    weights
+    weights.index_axis_move(Axis(1), 0)
 }

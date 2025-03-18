@@ -2,8 +2,9 @@ extern crate openblas_src;
 
 use std::io::BufRead;
 
+use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, s};
 
 fn load_data_set() -> (Array2<f64>, Array1<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
@@ -39,9 +40,38 @@ fn load_data_set() -> (Array2<f64>, Array1<f64>) {
 fn main() {
     let (data_in, labels_in) = load_data_set();
 
-    let weights = alg::logistic::stoc_grad_ascent_0(data_in.view(), labels_in.view());
-    // let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
+    let mut weights_iterations = vec![];
 
+    for i in 1..100 {
+        let weights = alg::logistic::stoc_grad_ascent_0(
+            data_in.slice(s![0..i, ..]),
+            labels_in.slice(s![0..i]),
+        );
+        println!("weights: {weights:?}");
+        weights_iterations.push(weights);
+    }
+
+    // plot_data(data_in, labels_in, weights);
+    plot_weights_iterations(weights_iterations);
+}
+
+fn plot_weights_iterations(weights_iterations: Vec<Array1<f64>>) {
+    let weights_iterations = weights_iterations
+        .into_iter()
+        .map(|r| vec![r[0], r[1], r[2]])
+        .collect();
+
+    let app = IterationState { weights_iterations };
+
+    eframe::run_native(
+        "Plot",
+        eframe::NativeOptions::default(),
+        Box::new(|_cc| Ok(Box::new(app))),
+    )
+    .unwrap();
+}
+
+fn plot_data(data_in: Array2<f64>, labels_in: Array1<f64>, weights: Array1<f64>) {
     let mut data = vec![];
     let mut labels = vec![];
 
@@ -55,12 +85,8 @@ fn main() {
 
     println!("weights: {:?}", weights);
 
-    let weights = weights.index_axis(ndarray::Axis(1), 0).to_vec();
+    let weights = weights.to_vec();
 
-    plot_data(data, labels, weights);
-}
-
-fn plot_data(data: Vec<[f64; 2]>, labels: Vec<f64>, weights: Vec<f64>) {
     let app = App {
         weights,
         data,
@@ -73,6 +99,61 @@ fn plot_data(data: Vec<[f64; 2]>, labels: Vec<f64>, weights: Vec<f64>) {
         Box::new(|_cc| Ok(Box::new(app))),
     )
     .unwrap();
+}
+
+struct IterationState {
+    weights_iterations: Vec<Vec<f64>>,
+}
+
+impl eframe::App for IterationState {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let mut x0_iteration = vec![];
+            let mut x1_iteration = vec![];
+            let mut x2_iteration = vec![];
+
+            for (idx, weight) in self.weights_iterations.iter().enumerate() {
+                x0_iteration.push([idx as f64, weight[0]]);
+                x1_iteration.push([idx as f64, weight[1]]);
+                x2_iteration.push([idx as f64, weight[2]]);
+            }
+
+            let rect1 = ui.max_rect();
+
+            let height = rect1.height() / 3.0;
+            let offset = vec2(rect1.width(), height);
+
+            ui.allocate_ui(offset, |ui| {
+                egui_plot::Plot::new("x0 plot")
+                    .y_axis_label("X0")
+                    .show(ui, |plot_ui| {
+                        let points = PlotPoints::new(x0_iteration);
+
+                        plot_ui.points(Points::new(points));
+                    });
+            });
+
+            ui.allocate_ui(offset, |ui| {
+                egui_plot::Plot::new("x1 plot")
+                    .y_axis_label("X1")
+                    .show(ui, |plot_ui| {
+                        let points = PlotPoints::new(x1_iteration);
+
+                        plot_ui.points(Points::new(points));
+                    });
+            });
+
+            ui.allocate_ui(offset, |ui| {
+                egui_plot::Plot::new("x2 plot")
+                    .y_axis_label("X2")
+                    .show(ui, |plot_ui| {
+                        let points = PlotPoints::new(x2_iteration);
+
+                        plot_ui.points(Points::new(points));
+                    })
+            });
+        });
+    }
 }
 
 struct App {
