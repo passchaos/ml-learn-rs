@@ -3,9 +3,9 @@ extern crate openblas_src;
 use std::io::BufRead;
 
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
 
-fn load_data_set() -> (Array2<f64>, Array2<f64>) {
+fn load_data_set() -> (Array2<f64>, Array1<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
 
     let file = std::io::BufReader::new(std::fs::File::open(path).unwrap());
@@ -32,24 +32,25 @@ fn load_data_set() -> (Array2<f64>, Array2<f64>) {
 
     (
         Array2::from_shape_vec((m, 3), data_mat).unwrap(),
-        Array2::from_shape_vec((m, 1), label_vec).unwrap(),
+        Array1::from_vec(label_vec),
     )
 }
 
 fn main() {
     let (data_in, labels_in) = load_data_set();
 
-    let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
+    let weights = alg::logistic::stoc_grad_ascent_0(data_in.view(), labels_in.view());
+    // let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
 
     let mut data = vec![];
     let mut labels = vec![];
 
     for (i_data, i_label) in data_in
         .axis_iter(ndarray::Axis(0))
-        .zip(labels_in.axis_iter(ndarray::Axis(0)))
+        .zip(labels_in.into_iter())
     {
         data.push([i_data[1], i_data[2]]);
-        labels.push(i_label[0]);
+        labels.push(i_label);
     }
 
     println!("weights: {:?}", weights);
