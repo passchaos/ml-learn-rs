@@ -2,9 +2,8 @@ extern crate openblas_src;
 
 use std::io::BufRead;
 
-use alg::math::sigmoid;
-use egui_plot::{Legend, PlotPoint, PlotPoints, Points};
-use ndarray::{Array1, Array2, ArrayView2};
+use egui_plot::{Legend, PlotPoints, Points};
+use ndarray::Array2;
 
 fn load_data_set() -> (Array2<f64>, Array2<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
@@ -37,27 +36,10 @@ fn load_data_set() -> (Array2<f64>, Array2<f64>) {
     )
 }
 
-fn gradient_ascent(data_in: ArrayView2<f64>, labels_in: ArrayView2<f64>) -> Array2<f64> {
-    let n = data_in.shape()[1];
-    let alpha = 0.001;
-    let max_cycles = 500;
-
-    let mut weights: Array2<f64> = Array2::ones((n, 1));
-
-    for _ in 0..max_cycles {
-        let h = sigmoid(data_in.dot(&weights));
-
-        let error = &labels_in - &h;
-        weights = weights + alpha * data_in.t().dot(&error);
-    }
-
-    weights
-}
-
 fn main() {
     let (data_in, labels_in) = load_data_set();
 
-    let weights = gradient_ascent(data_in.view(), labels_in.view());
+    let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
 
     let mut data = vec![];
     let mut labels = vec![];
@@ -87,7 +69,7 @@ fn plot_data(data: Vec<[f64; 2]>, labels: Vec<f64>, weights: Vec<f64>) {
     eframe::run_native(
         "Plot",
         eframe::NativeOptions::default(),
-        Box::new(|cc| Ok(Box::new(app))),
+        Box::new(|_cc| Ok(Box::new(app))),
     )
     .unwrap();
 }
@@ -99,7 +81,7 @@ struct App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let legend = Legend::default().position(egui_plot::Corner::RightTop);
 
