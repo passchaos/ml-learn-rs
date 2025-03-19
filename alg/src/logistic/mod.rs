@@ -20,7 +20,12 @@ pub fn gradient_ascent(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> 
     weights.index_axis_move(Axis(1), 0)
 }
 
-pub fn stoc_grad_ascent_0(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) -> Array1<f64> {
+pub fn stoc_grad_ascent_0(
+    weight_iterations: &mut Vec<Array1<f64>>,
+    data_in: ArrayView2<f64>,
+    labels_in: ArrayView1<f64>,
+    num_iter: usize,
+) -> Array1<f64> {
     let m = data_in.shape()[0];
     let n = data_in.shape()[1];
 
@@ -28,16 +33,21 @@ pub fn stoc_grad_ascent_0(data_in: ArrayView2<f64>, labels_in: ArrayView1<f64>) 
 
     let mut weights = Array2::ones((n, 1));
 
-    for i in 0..m {
-        let data_i_orig = data_in.index_axis(Axis(0), i);
-        let data_i = Array2::from_shape_vec((1, n), data_i_orig.clone().to_vec()).unwrap();
+    for _ in 0..num_iter {
+        for i in 0..m {
+            let data_i_orig = data_in.index_axis(Axis(0), i);
+            let data_i = Array2::from_shape_vec((1, n), data_i_orig.clone().to_vec()).unwrap();
 
-        let h = crate::math::sigmoid(data_i.dot(&weights));
+            let h = crate::math::sigmoid(data_i.dot(&weights));
 
-        let h = h.first().unwrap();
-        let error = labels_in[i] - h;
+            let h = h.first().unwrap();
+            let error = labels_in[i] - h;
 
-        weights = weights + alpha * error * data_i.t().to_owned();
+            weights = weights + alpha * error * data_i.t().to_owned();
+        }
+
+        let weight_i = weights.index_axis(Axis(1), 0).to_owned();
+        weight_iterations.push(weight_i);
     }
 
     weights.index_axis_move(Axis(1), 0)

@@ -40,19 +40,19 @@ fn load_data_set() -> (Array2<f64>, Array1<f64>) {
 fn main() {
     let (data_in, labels_in) = load_data_set();
 
-    let mut weights_iterations = vec![];
+    let mut weights_iterations: Vec<Array1<f64>> = vec![];
 
-    for i in 1..100 {
-        let weights = alg::logistic::stoc_grad_ascent_0(
-            data_in.slice(s![0..i, ..]),
-            labels_in.slice(s![0..i]),
-        );
-        println!("weights: {weights:?}");
-        weights_iterations.push(weights);
-    }
+    let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
+    let weights = alg::logistic::stoc_grad_ascent_0(
+        &mut weights_iterations,
+        data_in.view(),
+        labels_in.view(),
+        100,
+    );
+    println!("weights: {weights:?}");
 
-    // plot_data(data_in, labels_in, weights);
     plot_weights_iterations(weights_iterations);
+    // plot_data(data_in, labels_in, weights);
 }
 
 fn plot_weights_iterations(weights_iterations: Vec<Array1<f64>>) {
@@ -82,8 +82,6 @@ fn plot_data(data_in: Array2<f64>, labels_in: Array1<f64>, weights: Array1<f64>)
         data.push([i_data[1], i_data[2]]);
         labels.push(i_label);
     }
-
-    println!("weights: {:?}", weights);
 
     let weights = weights.to_vec();
 
