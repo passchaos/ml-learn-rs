@@ -9,6 +9,7 @@ ndarray-linalg = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+rand = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"

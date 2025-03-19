@@ -4,7 +4,7 @@ use std::io::BufRead;
 
 use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2, s};
+use ndarray::{Array1, Array2};
 
 fn load_data_set() -> (Array2<f64>, Array1<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
@@ -42,17 +42,24 @@ fn main() {
 
     let mut weights_iterations: Vec<Array1<f64>> = vec![];
 
-    let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
-    let weights = alg::logistic::stoc_grad_ascent_0(
+    // let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
+    // let weights = alg::logistic::stoc_grad_ascent_0(
+    //     &mut weights_iterations,
+    //     data_in.view(),
+    //     labels_in.view(),
+    //     200,
+    // );
+
+    let weights = alg::logistic::stoc_grad_ascent_1(
         &mut weights_iterations,
         data_in.view(),
         labels_in.view(),
-        100,
+        1000,
     );
     println!("weights: {weights:?}");
 
-    plot_weights_iterations(weights_iterations);
-    // plot_data(data_in, labels_in, weights);
+    // plot_weights_iterations(weights_iterations);
+    plot_data(data_in, labels_in, weights);
 }
 
 fn plot_weights_iterations(weights_iterations: Vec<Array1<f64>>) {
@@ -104,7 +111,7 @@ struct IterationState {
 }
 
 impl eframe::App for IterationState {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut x0_iteration = vec![];
             let mut x1_iteration = vec![];
