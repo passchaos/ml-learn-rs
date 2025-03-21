@@ -1,6 +1,6 @@
 extern crate openblas_src;
 
-use std::io::BufRead;
+use std::{collections::HashMap, io::BufRead};
 
 use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};
@@ -59,7 +59,20 @@ fn main() {
     println!("weights: {weights:?}");
 
     // plot_weights_iterations(weights_iterations);
-    plot_data(data_in, labels_in, weights);
+
+    let mut weights_map = HashMap::new();
+    for count in [200, 500, 1000] {
+        let weights = alg::logistic::stoc_grad_ascent_1(
+            &mut weights_iterations,
+            data_in.view(),
+            labels_in.view(),
+            count,
+        );
+
+        weights_map.insert(count, weights);
+    }
+
+    plot_data(data_in, labels_in, weights_map);
 }
 
 fn plot_weights_iterations(weights_iterations: Vec<Array1<f64>>) {
@@ -78,7 +91,11 @@ fn plot_weights_iterations(weights_iterations: Vec<Array1<f64>>) {
     .unwrap();
 }
 
-fn plot_data(data_in: Array2<f64>, labels_in: Array1<f64>, weights: Array1<f64>) {
+fn plot_data(
+    data_in: Array2<f64>,
+    labels_in: Array1<f64>,
+    weights_map: HashMap<usize, Array1<f64>>,
+) {
     let mut data = vec![];
     let mut labels = vec![];
 
@@ -90,7 +107,10 @@ fn plot_data(data_in: Array2<f64>, labels_in: Array1<f64>, weights: Array1<f64>)
         labels.push(i_label);
     }
 
-    let weights = weights.to_vec();
+    let weights = weights_map
+        .into_iter()
+        .map(|(k, v)| (k, v.to_vec()))
+        .collect();
 
     let app = App {
         weights,
@@ -162,7 +182,7 @@ impl eframe::App for IterationState {
 }
 
 struct App {
-    weights: Vec<f64>,
+    weights: HashMap<usize, Vec<f64>>,
     data: Vec<[f64; 2]>,
     labels: Vec<f64>,
 }
@@ -181,17 +201,20 @@ impl eframe::App for App {
             egui_plot::Plot::new("plot")
                 .legend(legend)
                 .show(ui, |plot_ui| {
-                    let line_data: Vec<_> = ndarray::linspace(-3.0, 3.0, 100)
-                        .map(|x| {
-                            let y = -(self.weights[0] + self.weights[1] * x) / self.weights[2];
+                    for (count, weights) in &self.weights {
+                        let line_data: Vec<_> = ndarray::linspace(-3.0, 3.0, 100)
+                            .map(|x| {
+                                let y = -(weights[0] + weights[1] * x) / weights[2];
 
-                            [x, y]
-                        })
-                        .collect();
+                                [x, y]
+                            })
+                            .collect();
 
-                    let line = egui_plot::Line::new(PlotPoints::from(line_data))
-                        .color(egui::Color32::GREEN);
-                    plot_ui.line(line);
+                        let line = egui_plot::Line::new(PlotPoints::from(line_data))
+                            .name(format!("IterCount: {count}"))
+                            .color(egui::Color32::GREEN);
+                        plot_ui.line(line);
+                    }
 
                     for (point, label) in data {
                         let points = PlotPoints::from(point);

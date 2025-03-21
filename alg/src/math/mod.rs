@@ -1,5 +1,5 @@
-use ndarray::Array2;
+use ndarray::{Array, Dimension};
 
-pub fn sigmoid(x: Array2<f64>) -> Array2<f64> {
+pub fn sigmoid<Dim: Dimension>(x: &Array<f64, Dim>) -> Array<f64, Dim> {
     1.0 / (1.0 + (-x).exp())
 }
