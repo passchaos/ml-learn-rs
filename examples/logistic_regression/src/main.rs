@@ -6,7 +6,7 @@ use alg::math::Sigmoid;
 use anyhow::Result;
 use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2, Axis, arr0, arr1};
+use ndarray::{Array1, Array2, ArrayView1, Axis, arr0, arr1};
 
 fn load_data_set() -> (Array2<f64>, Array1<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
@@ -40,7 +40,20 @@ fn load_data_set() -> (Array2<f64>, Array1<f64>) {
 }
 
 fn main() {
-    colic_test().unwrap();
+    // gradient_descent_plot();
+
+    let num_tests = 10;
+    let mut err_sum = 0.0;
+
+    for _ in 0..num_tests {
+        let err_rate = colic_test().unwrap();
+        err_sum += err_rate;
+    }
+
+    println!(
+        "after {num_tests} iterations, the average error rate is: {}",
+        err_sum / num_tests as f64
+    );
 }
 
 fn gradient_descent_plot() {
@@ -249,13 +262,13 @@ impl eframe::App for App {
     }
 }
 
-fn classify_vector(inx: Array1<f64>, weights: &Array1<f64>) -> bool {
+fn classify_vector(inx: ArrayView1<f64>, weights: &Array1<f64>) -> f64 {
     let prob = inx.dot(weights).sigmoid();
 
-    prob > 0.5
+    if prob > 0.5 { 1.0 } else { 0.0 }
 }
 
-fn colic_test() -> Result<()> {
+fn colic_test() -> Result<f64> {
     let train_file = std::io::BufReader::new(std::fs::File::open(tools::full_file_path(
         "Ch05/horseColicTraining.txt",
     ))?);
@@ -289,16 +302,37 @@ fn colic_test() -> Result<()> {
     }
 
     let (train_weights, _) =
-        alg::logistic::stoc_grad_ascent_1(train_set.view(), train_labels.view(), 20);
+        alg::logistic::stoc_grad_ascent_1(train_set.view(), train_labels.view(), 500);
     println!("train weights: {train_weights}");
 
     let mut error_count = 0.0;
     let mut num_test_vec = 0.0;
+
     for line in test_file.lines() {
         num_test_vec += 1.0;
 
-        let curr_line = line.unwrap().trim().split('\t');
+        let line_s = line.unwrap();
+        let mut curr_line = line_s.trim().split('\t');
+
+        let mut line_att = vec![];
+        for _ in 0..ATT_COUNT {
+            let f = curr_line.next().unwrap().parse::<f64>().unwrap();
+            line_att.push(f);
+        }
+
+        let label = curr_line.next().unwrap().parse::<f64>().unwrap();
+
+        let inx = Array1::from_vec(line_att);
+        let classified_label = classify_vector(inx.view(), &train_weights);
+        println!("label: {label} classified_label: {classified_label}");
+
+        if label != classified_label {
+            error_count += 1.0;
+        }
     }
 
-    Ok(())
+    let err_rate = error_count / num_test_vec;
+    println!("error rate: {err_rate}");
+
+    Ok(err_rate)
 }
