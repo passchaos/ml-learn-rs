@@ -2,9 +2,11 @@ extern crate openblas_src;
 
 use std::{collections::HashMap, io::BufRead};
 
+use alg::math::Sigmoid;
+use anyhow::Result;
 use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, Axis, arr0, arr1};
 
 fn load_data_set() -> (Array2<f64>, Array1<f64>) {
     let path = tools::full_file_path("Ch05/testSet.txt");
@@ -38,9 +40,13 @@ fn load_data_set() -> (Array2<f64>, Array1<f64>) {
 }
 
 fn main() {
+    colic_test().unwrap();
+}
+
+fn gradient_descent_plot() {
     let (data_in, labels_in) = load_data_set();
 
-    let mut weights_iterations: Vec<Array1<f64>> = vec![];
+    // let mut weights_iterations: Vec<Array1<f64>> = vec![];
 
     // let weights = alg::logistic::gradient_ascent(data_in.view(), labels_in.view());
     // let weights = alg::logistic::stoc_grad_ascent_0(
@@ -71,12 +77,8 @@ fn main() {
             weights,
         );
 
-        let weights = alg::logistic::stoc_grad_ascent_1(
-            &mut weights_iterations,
-            data_in.view(),
-            labels_in.view(),
-            count,
-        );
+        let (weights, _) =
+            alg::logistic::stoc_grad_ascent_1(data_in.view(), labels_in.view(), count);
 
         weights_map.insert(
             (
@@ -245,4 +247,58 @@ impl eframe::App for App {
                 });
         });
     }
+}
+
+fn classify_vector(inx: Array1<f64>, weights: &Array1<f64>) -> bool {
+    let prob = inx.dot(weights).sigmoid();
+
+    prob > 0.5
+}
+
+fn colic_test() -> Result<()> {
+    let train_file = std::io::BufReader::new(std::fs::File::open(tools::full_file_path(
+        "Ch05/horseColicTraining.txt",
+    ))?);
+    let test_file = std::io::BufReader::new(std::fs::File::open(tools::full_file_path(
+        "Ch05/horseColicTest.txt",
+    ))?);
+
+    const ATT_COUNT: usize = 21;
+
+    let mut train_set = Array2::zeros((0, ATT_COUNT));
+    let mut train_labels = Array1::from_vec(vec![]);
+
+    for line_str in train_file.lines() {
+        let line_s = line_str.unwrap();
+
+        let mut curr_line = line_s.trim().split('\t');
+
+        let mut line_att = vec![];
+
+        for _ in 0..ATT_COUNT {
+            let f = curr_line.next().unwrap().parse::<f64>().unwrap();
+            line_att.push(f);
+        }
+
+        let new_line_att = arr1(&line_att);
+
+        train_set.push(Axis(0), new_line_att.view()).unwrap();
+
+        let label = curr_line.next().unwrap().parse::<f64>().unwrap();
+        train_labels.push(Axis(0), arr0(label).view()).unwrap();
+    }
+
+    let (train_weights, _) =
+        alg::logistic::stoc_grad_ascent_1(train_set.view(), train_labels.view(), 20);
+    println!("train weights: {train_weights}");
+
+    let mut error_count = 0.0;
+    let mut num_test_vec = 0.0;
+    for line in test_file.lines() {
+        num_test_vec += 1.0;
+
+        let curr_line = line.unwrap().trim().split('\t');
+    }
+
+    Ok(())
 }

@@ -24,11 +24,12 @@ pub fn gradient_ascent(
 }
 
 pub fn stoc_grad_ascent_0(
-    weight_iterations: &mut Vec<Array1<f64>>,
     data_in: ArrayView2<f64>,
     labels_in: ArrayView1<f64>,
     num_iter: usize,
-) -> Array1<f64> {
+) -> (Array1<f64>, Vec<Array1<f64>>) {
+    let mut weight_iterations = vec![];
+
     let m = data_in.shape()[0];
     let n = data_in.shape()[1];
 
@@ -50,15 +51,16 @@ pub fn stoc_grad_ascent_0(
         weight_iterations.push(weights.clone());
     }
 
-    weights
+    (weights, weight_iterations)
 }
 
 pub fn stoc_grad_ascent_1(
-    weight_iterations: &mut Vec<Array1<f64>>,
     data_in: ArrayView2<f64>,
     labels_in: ArrayView1<f64>,
     num_iter: usize,
-) -> Array1<f64> {
+) -> (Array1<f64>, Vec<Array1<f64>>) {
+    let mut weight_iterations = vec![];
+
     let m = data_in.shape()[0];
     let n = data_in.shape()[1];
 
@@ -89,7 +91,7 @@ pub fn stoc_grad_ascent_1(
         weight_iterations.push(weights.clone());
     }
 
-    weights
+    (weights, weight_iterations)
 }
 
 #[cfg(test)]

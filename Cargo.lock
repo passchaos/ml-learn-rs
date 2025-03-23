@@ -2069,6 +2069,7 @@ name = "logistic_regression"
 version = "0.1.0"
 dependencies = [
  "alg",
+ "anyhow",
  "eframe",
  "egui",
  "egui_plot",

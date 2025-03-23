@@ -13,3 +13,4 @@ eframe = { workspace = true }
 egui = { workspace = true }
 egui_plot = { workspace = true }
 num = { workspace = true }
+anyhow = { workspace = true }

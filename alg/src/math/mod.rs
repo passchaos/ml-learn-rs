@@ -20,3 +20,19 @@ impl Sigmoid for f64 {
         1.0 / (1.0 + (-self).exp())
     }
 }
+
+impl<D: Dimension> Sigmoid for Array<f32, D> {
+    type Output = Array<f32, D>;
+
+    fn sigmoid(&self) -> Self::Output {
+        1.0 / (1.0 + (-self).exp())
+    }
+}
+
+impl Sigmoid for f32 {
+    type Output = f32;
+
+    fn sigmoid(&self) -> Self::Output {
+        1.0 / (1.0 + (-self).exp())
+    }
+}
