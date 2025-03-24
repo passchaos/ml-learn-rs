@@ -324,7 +324,7 @@ fn colic_test() -> Result<f64> {
 
         let inx = Array1::from_vec(line_att);
         let classified_label = classify_vector(inx.view(), &train_weights);
-        println!("label: {label} classified_label: {classified_label}");
+        // println!("label: {label} classified_label: {classified_label}");
 
         if label != classified_label {
             error_count += 1.0;
