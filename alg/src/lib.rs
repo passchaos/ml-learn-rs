@@ -3,6 +3,7 @@ pub mod decision_tree;
 pub mod knn;
 pub mod logistic;
 pub mod math;
+pub mod neural_network;
 
 #[cfg(test)]
 mod tests {

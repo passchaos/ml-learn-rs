@@ -36,3 +36,56 @@ impl Sigmoid for f32 {
         1.0 / (1.0 + (-self).exp())
     }
 }
+
+pub trait Relu {
+    type Output;
+    fn relu(&self) -> Self::Output;
+}
+
+impl<D: Dimension> Relu for Array<f64, D> {
+    type Output = Array<f64, D>;
+
+    fn relu(&self) -> Self::Output {
+        let mut data = self.clone();
+
+        data.map_inplace(|a| {
+            if *a < 0.0 {
+                *a = 0.0;
+            }
+        });
+
+        data
+    }
+}
+
+impl Relu for f64 {
+    type Output = f64;
+
+    fn relu(&self) -> Self::Output {
+        if self > &0.0 { *self } else { 0.0 }
+    }
+}
+
+impl<D: Dimension> Relu for Array<f32, D> {
+    type Output = Array<f32, D>;
+
+    fn relu(&self) -> Self::Output {
+        let mut data = self.clone();
+
+        data.map_inplace(|a| {
+            if *a < 0.0 {
+                *a = 0.0;
+            }
+        });
+
+        data
+    }
+}
+
+impl Relu for f32 {
+    type Output = f32;
+
+    fn relu(&self) -> Self::Output {
+        if self > &0.0 { *self } else { 0.0 }
+    }
+}
