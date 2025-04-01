@@ -23,6 +23,7 @@ serde_json = "*"
 regex = "*"
 rand = "*"
 num = "*"
+approx = "*"
 
 # [profile.dev.package."*"]
 # opt-level = 3

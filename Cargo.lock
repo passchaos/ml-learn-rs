@@ -142,6 +142,7 @@ dependencies = [
 name = "alg"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "ndarray",
  "ndarray-linalg",
  "rand",
@@ -2284,6 +2285,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys",
+]
+
+[[package]]
+name = "neural_network"
+version = "0.1.0"
+dependencies = [
+ "alg",
+ "ndarray",
+ "openblas-src",
 ]
 
 [[package]]

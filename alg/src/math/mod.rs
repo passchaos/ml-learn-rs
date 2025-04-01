@@ -1,5 +1,38 @@
 use ndarray::{Array, Dimension};
 
+pub trait Softmax {
+    type Output;
+    fn softmax(&self) -> Self::Output;
+}
+
+impl<D: Dimension> Softmax for Array<f64, D> {
+    type Output = Array<f64, D>;
+
+    fn softmax(&self) -> Self::Output {
+        let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
+
+        let exp_a = (self - *max).exp();
+
+        let sum = exp_a.sum();
+
+        exp_a / sum
+    }
+}
+
+impl<D: Dimension> Softmax for Array<f32, D> {
+    type Output = Array<f32, D>;
+
+    fn softmax(&self) -> Self::Output {
+        let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
+
+        let exp_a = (self - *max).exp();
+
+        let sum = exp_a.sum();
+
+        exp_a / sum
+    }
+}
+
 pub trait Sigmoid {
     type Output;
     fn sigmoid(&self) -> Self::Output;
@@ -87,5 +120,26 @@ impl Relu for f32 {
 
     fn relu(&self) -> Self::Output {
         if self > &0.0 { *self } else { 0.0 }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use ndarray::array;
+
+    use super::*;
+
+    #[test]
+    fn test_softmax() {
+        let input = array![0.3, 2.9, 4.0];
+
+        let sm: Array<_, _> = input.softmax();
+        let dest = array![0.01821127, 0.24519181, 0.73659691];
+
+        for (a, b) in dest.into_iter().zip(sm.into_iter()) {
+            println!("{}", ((a - b) as f64).abs());
+            assert_relative_eq!(a, b, max_relative = 0.000001);
+        }
     }
 }
