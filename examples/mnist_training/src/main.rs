@@ -1,6 +1,4 @@
-use std::io::Cursor;
-
-use egui::{ColorImage, Image, ImageSource};
+use egui::{ColorImage, Image};
 use ndarray::{Array2, Axis};
 
 fn main() {
@@ -27,11 +25,13 @@ struct App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let data_0_len = self.data.len_of(Axis(0));
 
-            if ui.button("--->").clicked() {
+            ui.label(format!("current data row: {}", self.idx));
+
+            if ui.button("<---").clicked() {
                 self.idx = (self.idx + data_0_len - 1) % data_0_len;
             }
 
@@ -43,7 +43,7 @@ impl eframe::App for App {
             let img = Image::new(&texture).shrink_to_fit();
             ui.add_sized([300.0, 300.0], img);
 
-            if ui.button("<---").clicked() {
+            if ui.button("--->").clicked() {
                 self.idx = (self.idx + 1) % data_0_len;
             }
 
