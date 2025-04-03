@@ -24,6 +24,8 @@ regex = "*"
 rand = "*"
 num = "*"
 approx = "*"
+byteorder = "*"
+image = "*"
 
 # [profile.dev.package."*"]
 # opt-level = 3
