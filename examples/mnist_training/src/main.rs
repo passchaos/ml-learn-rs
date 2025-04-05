@@ -71,6 +71,8 @@ fn main() {
 
     let train_data_path = mnist_dir.join("train-images-idx3-ubyte");
     let data = alg::dataset::mnist::load_images(train_data_path);
+    let label_data_path = mnist_dir.join("train-labels-idx1-ubyte");
+    let labels = alg::dataset::mnist::load_labels(label_data_path);
 
     let network = init_network();
 
@@ -83,6 +85,7 @@ fn main() {
             Ok(Box::new(App {
                 network,
                 data,
+                labels,
                 idx: 0,
             }))
         }),
@@ -93,6 +96,7 @@ fn main() {
 struct App {
     network: HashMap<String, Array2<f32>>,
     data: Array2<u8>,
+    labels: Array1<u8>,
     idx: usize,
 }
 
@@ -129,7 +133,10 @@ impl eframe::App for App {
             let mut res: Vec<_> = (0..=9).into_iter().zip(result.into_iter()).collect();
             res.sort_by(|a, b| b.1.total_cmp(&a.1));
 
-            ui.label(format!("predicted label: {:?}", res));
+            let actual_label = self.labels[self.idx];
+            ui.label(format!(
+                "actual label: {actual_label} predicted label: {res:?}"
+            ));
         });
     }
 }
