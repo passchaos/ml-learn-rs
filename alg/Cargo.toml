@@ -12,6 +12,8 @@ serde_json = { workspace = true }
 rand = { workspace = true }
 approx = { workspace = true }
 byteorder = { workspace = true }
+anyhow = { workspace = true }
+safetensors = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"

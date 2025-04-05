@@ -5,6 +5,7 @@ pub mod knn;
 pub mod logistic;
 pub mod math;
 pub mod neural_network;
+pub mod tensor;
 
 #[cfg(test)]
 mod tests {
