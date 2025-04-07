@@ -1,4 +1,5 @@
 use ndarray::{Array, Dimension};
+pub mod loss;
 
 pub trait Softmax {
     type Output;
