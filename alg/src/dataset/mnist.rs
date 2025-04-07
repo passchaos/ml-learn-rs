@@ -45,7 +45,10 @@ pub fn load_labels<P: AsRef<Path>>(p: P) -> Array1<u8> {
 
 #[cfg(test)]
 mod tests {
-    use crate::dataset::mnist::{load_images, load_labels};
+    use crate::{
+        dataset::mnist::{load_images, load_labels},
+        math::{DigitalRecognition, one_hot::OneHotTransform},
+    };
 
     #[test]
     fn test_mnist_data_parse() {
@@ -60,6 +63,9 @@ mod tests {
             .join("Work/mnist/train-labels-idx1-ubyte");
         let image_label = load_labels(train_label_path);
 
-        println!("image data= {image_data:?} image label= {image_label:?}");
+        let oneshoted_labels = DigitalRecognition::one_hot(&image_label);
+        println!(
+            "image_data= {image_data:?} image_label= {image_label:?} oneshoted_labels= {oneshoted_labels:?}"
+        );
     }
 }

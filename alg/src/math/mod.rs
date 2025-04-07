@@ -1,5 +1,9 @@
 use ndarray::{Array, Dimension};
 pub mod loss;
+pub mod normalize;
+pub mod one_hot;
+
+pub struct DigitalRecognition;
 
 pub trait Softmax {
     type Output;
@@ -129,7 +133,7 @@ mod tests {
     use approx::assert_relative_eq;
     use ndarray::array;
 
-    use super::*;
+    use super::{normalize::NormalizeTransform, *};
 
     #[test]
     fn test_softmax() {
@@ -142,5 +146,13 @@ mod tests {
             println!("{}", ((a - b) as f64).abs());
             assert_relative_eq!(a, b, max_relative = 0.000001);
         }
+    }
+
+    #[test]
+    fn test_digital_recognition() {
+        let a = array![12.0, 12.0, 2.0, 5.0];
+
+        let b = DigitalRecognition::normalize(&a);
+        println!("b= {b}");
     }
 }

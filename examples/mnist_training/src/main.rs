@@ -3,11 +3,14 @@ extern crate openblas_src;
 use std::collections::HashMap;
 
 use alg::{
-    math::{Sigmoid, Softmax},
+    math::{
+        DigitalRecognition, Sigmoid, Softmax, normalize::NormalizeTransform,
+        one_hot::OneHotTransform,
+    },
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2, ArrayView1, Axis};
 
 fn init_network() -> HashMap<String, Array2<f32>> {
     let file_path = std::env::home_dir()
@@ -41,7 +44,7 @@ fn init_network() -> HashMap<String, Array2<f32>> {
     map
 }
 
-fn predict(network: &HashMap<String, Array2<f32>>, x: &Array1<f32>) -> Array1<f32> {
+fn predict(network: &HashMap<String, Array2<f32>>, x: ArrayView1<f32>) -> Array1<f32> {
     let w1 = &network["w1"];
     let w2 = &network["w2"];
     let w3 = &network["w3"];
@@ -66,13 +69,38 @@ fn predict(network: &HashMap<String, Array2<f32>>, x: &Array1<f32>) -> Array1<f3
     y
 }
 
-fn main() {
+fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
     let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
 
     let train_data_path = mnist_dir.join("train-images-idx3-ubyte");
-    let data = alg::dataset::mnist::load_images(train_data_path);
+    let train_data = alg::dataset::mnist::load_images(train_data_path);
+    let train_data = DigitalRecognition::normalize(&train_data);
+
     let label_data_path = mnist_dir.join("train-labels-idx1-ubyte");
-    let labels = alg::dataset::mnist::load_labels(label_data_path);
+    let train_labels = alg::dataset::mnist::load_labels(label_data_path);
+    let train_labels = DigitalRecognition::one_hot(&train_labels);
+
+    let test_data_path = mnist_dir.join("t10k-images-idx3-ubyte");
+    let test_data = alg::dataset::mnist::load_images(test_data_path);
+    let test_data = DigitalRecognition::normalize(&test_data);
+
+    let label_data_path = mnist_dir.join("t10k-labels-idx1-ubyte");
+    let test_labels = alg::dataset::mnist::load_labels(label_data_path);
+    let test_labels = DigitalRecognition::one_hot(&test_labels);
+
+    ((train_data, train_labels), (test_data, test_labels))
+}
+
+fn main() {
+    let ((x_train, t_train), (x_test, t_test)) = load_mnist();
+
+    println!(
+        "{:?} {:?} {:?} {:?}",
+        x_train.shape(),
+        t_train.shape(),
+        x_test.shape(),
+        t_test.shape()
+    );
 
     let network = init_network();
 
@@ -84,8 +112,8 @@ fn main() {
 
             Ok(Box::new(App {
                 network,
-                data,
-                labels,
+                data: x_train,
+                labels: t_train,
                 idx: 0,
             }))
         }),
@@ -95,8 +123,8 @@ fn main() {
 
 struct App {
     network: HashMap<String, Array2<f32>>,
-    data: Array2<u8>,
-    labels: Array1<u8>,
+    data: Array2<f32>,
+    labels: Array2<f32>,
     idx: usize,
 }
 
@@ -111,14 +139,15 @@ impl eframe::App for App {
                 self.idx = (self.idx + data_0_len - 1) % data_0_len;
             }
 
-            let img_data = self.data.index_axis(Axis(0), self.idx).to_vec();
-
-            let img_data_a = self
+            let img_data = self
                 .data
                 .index_axis(Axis(0), self.idx)
-                .map(|a| *a as f32 / 255.0);
+                .map(|a| (a * 255.0) as u8)
+                .to_vec();
 
-            let result = predict(&self.network, &img_data_a).to_vec();
+            let img_data_a = self.data.index_axis(Axis(0), self.idx);
+
+            let result = predict(&self.network, img_data_a).to_vec();
 
             let image = ColorImage::from_gray([28, 28], &img_data);
             let texture = ctx.load_texture("abc", image, egui::TextureOptions::default());
@@ -133,7 +162,8 @@ impl eframe::App for App {
             let mut res: Vec<_> = (0..=9).into_iter().zip(result.into_iter()).collect();
             res.sort_by(|a, b| b.1.total_cmp(&a.1));
 
-            let actual_label = self.labels[self.idx];
+            let actual_label = self.labels.index_axis(Axis(0), self.idx);
+
             ui.label(format!(
                 "actual label: {actual_label} predicted label: {res:?}"
             ));

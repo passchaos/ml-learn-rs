@@ -24,7 +24,8 @@ mod tests {
         let err1 = mean_squared_error(&y, &t);
         let err2 = cross_entropy_error(&y, &t);
 
+        println!("mse= {err1} cee= {err2}");
+        assert_relative_eq!(err1, 0.097500000000000031);
         assert_relative_eq!(err2, 0.510825457, epsilon = 1e-6);
-        println!("mse= {err1} cee= {err2}")
     }
 }

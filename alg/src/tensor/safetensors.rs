@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use anyhow::{Result, bail};
 use byteorder::{LittleEndian, ReadBytesExt};
-use ndarray::{Array, Array2};
+use ndarray::Array2;
 use safetensors::{View, tensor::TensorView};
 
 pub trait Load {
