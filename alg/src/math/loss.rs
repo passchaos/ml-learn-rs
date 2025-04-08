@@ -6,7 +6,9 @@ pub fn mean_squared_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) ->
 
 pub fn cross_entropy_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) -> f32 {
     let delta = 1e-7;
-    -1.0 * ((t * (y + delta).ln()).sum())
+
+    let batch_size = y.shape()[0];
+    -1.0 * ((t * (y + delta).ln()).sum()) / batch_size as f32
 }
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 use ndarray::{Array, Dimension};
+pub mod autodiff;
 pub mod loss;
 pub mod normalize;
 pub mod one_hot;
