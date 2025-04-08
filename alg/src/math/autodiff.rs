@@ -1,6 +1,9 @@
-use std::ops::{Add, Div, Mul, Sub, SubAssign};
+use std::{
+    fmt::Display,
+    ops::{Add, Div, Mul, Sub, SubAssign},
+};
 
-use ndarray::Array1;
+use ndarray::{Array, Array1, Axis, Dimension, NdIndex, Zip};
 
 pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy>(
     f: fn(T) -> T,
@@ -13,19 +16,26 @@ pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + C
     a / b
 }
 
-pub fn numerical_gradient<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy>(
-    f: fn(Array1<T>) -> T,
-    x: Array1<T>,
+pub fn numerical_gradient<
+    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy + Display,
+    D: Dimension,
+>(
+    f: fn(Array<T, D>) -> T,
+    x: Array<T, D>,
     delta: T,
-) -> Array1<T> {
+) -> Array<T, D>
+where
+    <D as ndarray::Dimension>::Pattern: NdIndex<D>,
+{
     let mut res = x.clone();
 
-    for (idx, v) in x.clone().into_iter().enumerate() {
+    for (idx, v) in x.clone().indexed_iter() {
+        println!("idx: {idx:?} v: {v}");
         let mut new_x_1 = x.clone();
-        new_x_1[idx] = v + delta;
+        new_x_1[idx.clone()] = *v + delta;
 
         let mut new_x_2 = x.clone();
-        new_x_2[idx] = v - delta;
+        new_x_2[idx.clone()] = *v - delta;
 
         res[idx] = (f(new_x_1) - f(new_x_2)) / (delta + delta);
     }
@@ -34,7 +44,13 @@ pub fn numerical_gradient<T: Sub<Output = T> + Add<Output = T> + Div<Output = T>
 }
 
 pub fn gradient_descent<
-    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Mul<Output = T> + SubAssign + Copy,
+    T: Sub<Output = T>
+        + Add<Output = T>
+        + Div<Output = T>
+        + Mul<Output = T>
+        + SubAssign
+        + Copy
+        + Display,
 >(
     f: fn(Array1<T>) -> T,
     delta: T,
@@ -81,6 +97,10 @@ mod tests {
         let g2 = numerical_gradient(f1, array![0.0, 2.0], 1e-4);
         let g3 = numerical_gradient(f1, array![3.0, 0.0], 1e-4);
         println!("g1: {g1} g2= {g2} g3= {g3}");
+
+        let f2 = |x: Array2<f64>| x.pow2().sum();
+        let g4 = numerical_gradient(f2, array![[1.0, 2.0], [3.0, 4.0]], 1e-4);
+        println!("g4: {g4}");
     }
 
     #[test]

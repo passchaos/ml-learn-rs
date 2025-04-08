@@ -13,3 +13,4 @@ egui_extras = { workspace = true }
 image = { workspace = true }
 safetensors = { workspace = true }
 memmap2 = { workspace = true }
+rand = { workspace = true }

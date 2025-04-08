@@ -4,13 +4,42 @@ use std::collections::HashMap;
 
 use alg::{
     math::{
-        DigitalRecognition, Sigmoid, Softmax, normalize::NormalizeTransform,
-        one_hot::OneHotTransform,
+        DigitalRecognition, Sigmoid, Softmax, loss::cross_entropy_error,
+        normalize::NormalizeTransform, one_hot::OneHotTransform,
     },
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
 use ndarray::{Array1, Array2, ArrayView1, Axis};
+use rand::Rng;
+
+#[derive(Debug, Clone)]
+struct SimpleNet {
+    w: Array2<f32>,
+}
+
+impl SimpleNet {
+    fn new() -> Self {
+        let mut w = Array2::zeros((2, 3));
+
+        w.mapv_inplace(|a| rand::thread_rng().gen_range(0.0..1.0));
+
+        Self { w }
+    }
+
+    fn predict(&self, x: &Array1<f32>) -> Array1<f32> {
+        x.dot(&self.w)
+    }
+
+    fn loss(&self, x: &Array1<f32>, t: &Array1<f32>) -> f32 {
+        let z = self.predict(x);
+        let y = z.softmax();
+
+        let loss = cross_entropy_error(&y, t);
+
+        loss
+    }
+}
 
 fn init_network() -> HashMap<String, Array2<f32>> {
     let file_path = std::env::home_dir()
@@ -168,5 +197,16 @@ impl eframe::App for App {
                 "actual label: {actual_label} predicted label: {res:?}"
             ));
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_network() {
+        let w = SimpleNet::new();
+        println!("w: {w:?}");
     }
 }

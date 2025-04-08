@@ -2394,6 +2394,7 @@ dependencies = [
  "memmap2",
  "ndarray",
  "openblas-src",
+ "rand",
  "safetensors",
 ]
 
