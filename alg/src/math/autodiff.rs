@@ -1,9 +1,6 @@
-use std::{
-    fmt::Display,
-    ops::{Add, Div, Mul, Sub, SubAssign},
-};
+use std::ops::{Add, Div, Mul, Sub, SubAssign};
 
-use ndarray::{Array, Array1, Axis, Dimension, NdIndex, Zip};
+use ndarray::{Array, Dimension, NdIndex};
 
 pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy>(
     f: fn(T) -> T,
@@ -17,7 +14,7 @@ pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + C
 }
 
 pub fn numerical_gradient<
-    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy + Display,
+    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy,
     D: Dimension,
 >(
     f: fn(Array<T, D>) -> T,
@@ -25,12 +22,11 @@ pub fn numerical_gradient<
     delta: T,
 ) -> Array<T, D>
 where
-    <D as ndarray::Dimension>::Pattern: NdIndex<D>,
+    D::Pattern: NdIndex<D>,
 {
     let mut res = x.clone();
 
     for (idx, v) in x.clone().indexed_iter() {
-        println!("idx: {idx:?} v: {v}");
         let mut new_x_1 = x.clone();
         new_x_1[idx.clone()] = *v + delta;
 
@@ -44,20 +40,18 @@ where
 }
 
 pub fn gradient_descent<
-    T: Sub<Output = T>
-        + Add<Output = T>
-        + Div<Output = T>
-        + Mul<Output = T>
-        + SubAssign
-        + Copy
-        + Display,
+    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Mul<Output = T> + SubAssign + Copy,
+    D: Dimension,
 >(
-    f: fn(Array1<T>) -> T,
+    f: fn(Array<T, D>) -> T,
     delta: T,
-    init_x: Array1<T>,
+    init_x: Array<T, D>,
     lr: T,
     step_num: usize,
-) -> Array1<T> {
+) -> Array<T, D>
+where
+    D::Pattern: NdIndex<D>,
+{
     let mut x = init_x;
 
     for _ in 0..step_num {
@@ -75,7 +69,7 @@ mod tests {
     use std::f32;
 
     use approx::assert_relative_eq;
-    use ndarray::{Array2, array};
+    use ndarray::{Array1, Array2, array};
 
     use super::*;
 
