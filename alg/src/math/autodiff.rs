@@ -17,7 +17,7 @@ pub fn numerical_gradient<
     T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy,
     D: Dimension,
 >(
-    f: fn(Array<T, D>) -> T,
+    f: impl Fn(Array<T, D>) -> T,
     x: Array<T, D>,
     delta: T,
 ) -> Array<T, D>

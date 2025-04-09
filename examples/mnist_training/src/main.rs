@@ -10,7 +10,7 @@ use alg::{
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
-use ndarray::{Array1, Array2, ArrayView1, Axis};
+use ndarray::{Array1, Array2, ArrayView1, Axis, array};
 use rand::Rng;
 
 #[derive(Debug, Clone)]
@@ -19,10 +19,9 @@ struct SimpleNet {
 }
 
 impl SimpleNet {
-    fn new() -> Self {
-        let mut w = Array2::zeros((2, 3));
-
-        w.mapv_inplace(|a| rand::thread_rng().gen_range(0.0..1.0));
+    fn new(w: Array2<f32>) -> Self {
+        // let mut w = Array2::zeros((2, 3));
+        // w.mapv_inplace(|a| rand::thread_rng().gen_range(0.0..1.0));
 
         Self { w }
     }
@@ -31,11 +30,11 @@ impl SimpleNet {
         x.dot(&self.w)
     }
 
-    fn loss(&self, x: &Array1<f32>, t: &Array1<f32>) -> f32 {
+    fn loss(&self, x: &Array1<f32>, t: Array1<f32>) -> f32 {
         let z = self.predict(x);
         let y = z.softmax();
 
-        let loss = cross_entropy_error(&y, t);
+        let loss = cross_entropy_error(y, t);
 
         loss
     }
@@ -202,11 +201,33 @@ impl eframe::App for App {
 
 #[cfg(test)]
 mod tests {
+    use alg::math::autodiff::numerical_gradient;
+    use ndarray::arr1;
+
     use super::*;
 
     #[test]
     fn test_simple_network() {
-        let w = SimpleNet::new();
-        println!("w: {w:?}");
+        let mut w = array![
+            [0.47355232, 0.9977393, 0.84668094],
+            [0.85557411, 0.03563661, 0.69422093]
+        ];
+
+        let net = SimpleNet::new(w.clone());
+
+        let x = arr1(&[0.6, 0.9]);
+        let p = net.predict(&x);
+
+        // one-hot 表示
+        let t = arr1(&[0.0, 0.0, 1.0]);
+        println!("w: {net:?} p: {p} loss= {}", net.loss(&x, t.clone()));
+
+        let f1 = |w: Array2<f32>| {
+            let net = SimpleNet::new(w);
+            net.loss(&x, t.clone())
+        };
+
+        let a = numerical_gradient(f1, w, 0.001);
+        println!("a: {a}");
     }
 }

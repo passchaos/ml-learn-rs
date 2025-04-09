@@ -143,10 +143,7 @@ mod tests {
         let sm: Array<_, _> = input.softmax();
         let dest = array![0.01821127, 0.24519181, 0.73659691];
 
-        for (a, b) in dest.into_iter().zip(sm.into_iter()) {
-            println!("{}", ((a - b) as f64).abs());
-            assert_relative_eq!(a, b, max_relative = 0.000001);
-        }
+        assert_relative_eq!(sm, dest, max_relative = 0.000001);
     }
 
     #[test]
