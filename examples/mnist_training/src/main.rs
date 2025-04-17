@@ -13,6 +13,7 @@ use egui::{ColorImage, Image};
 use ndarray::{Array1, Array2, ArrayView1, Axis, array};
 use rand::Rng;
 
+#[derive(Debug)]
 struct TwoLayerNet {
     w1: Array2<f32>,
     b1: Array1<f32>,
@@ -78,11 +79,54 @@ impl TwoLayerNet {
         accuracy
     }
 
-    fn numerical_gradient(&self, x: &Array2<f32>, t: &Array2<f32>) -> Self {
-        let loss_w = || self.loss(x, t.clone());
+    fn numerical_gradient(&mut self, x: &Array2<f32>, t: &Array2<f32>) -> Self {
+        let mut w1 = self.w1.clone();
+        let mut b1 = self.b1.clone();
+        let mut w2 = self.w2.clone();
+        let mut b2 = self.b2.clone();
 
-        // numerical_gradient(f, x, delta)
-        todo!()
+        let g_w1 = numerical_gradient(
+            |w1: &Array2<f32>| {
+                self.w1 = w1.clone();
+                self.loss(x, t.clone())
+            },
+            &mut w1,
+            0.01,
+        );
+
+        let g_b1 = numerical_gradient(
+            |b1: &Array1<f32>| {
+                self.b1 = b1.clone();
+                self.loss(x, t.clone())
+            },
+            &mut b1,
+            0.01,
+        );
+
+        let g_w2 = numerical_gradient(
+            |w2: &Array2<f32>| {
+                self.w2 = w2.clone();
+                self.loss(x, t.clone())
+            },
+            &mut w2,
+            0.01,
+        );
+
+        let g_b2 = numerical_gradient(
+            |b2: &Array1<f32>| {
+                self.b2 = b2.clone();
+                self.loss(x, t.clone())
+            },
+            &mut b2,
+            0.01,
+        );
+
+        Self {
+            w1: g_w1,
+            b1: g_b1,
+            w2: g_w2,
+            b2: g_b2,
+        }
     }
 }
 
@@ -276,7 +320,7 @@ impl eframe::App for App {
 mod tests {
     use std::sync::RwLock;
 
-    use alg::math::autodiff::numerical_gradient;
+    use alg::math::{autodiff::numerical_gradient, stat::randn};
     use approx::assert_relative_eq;
     use ndarray::arr1;
 
@@ -316,11 +360,11 @@ mod tests {
         println!("a: {a}");
 
         // test for SimpleNet reuse
-        // let net = RwLock::new(SimpleNet::new(w.clone()));
+        // let mut net = SimpleNet::new(w.clone());
 
-        // let f1 = |w: &Array2<f32>| net.read().unwrap().loss(&x, t.clone());
+        // let f1 = |w: &Array2<f32>| net.loss(&x, t.clone());
 
-        // let a = numerical_gradient(f1, &mut net.write().unwrap().w, 0.001);
+        // let a = numerical_gradient(f1, &mut net.w, 0.001);
 
         // assert_relative_eq!(
         //     a,
@@ -331,5 +375,17 @@ mod tests {
         //     max_relative = 0.001
         // );
         // println!("a: {a}");
+    }
+
+    #[test]
+    fn test_two_layer_net() {
+        let mut net = TwoLayerNet::new(784, 100, 10, 0.01);
+
+        let x = randn((100, 784));
+        let t = randn((100, 10));
+
+        let grads = net.numerical_gradient(&x, &t);
+        println!("grads: {grads:?}");
+        // let t = net.predict(&x);
     }
 }
