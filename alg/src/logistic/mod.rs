@@ -1,5 +1,5 @@
 use ndarray::{Array1, ArrayView1, ArrayView2, Axis};
-use rand::{distributions::Uniform, prelude::Distribution};
+use rand::{distr::Uniform, prelude::Distribution};
 
 use crate::math::Sigmoid;
 
@@ -72,8 +72,8 @@ pub fn stoc_grad_ascent_1(
         for i in 0..m {
             let alpha = 4.0 / (1.0 + j as f64 + i as f64) + 0.0001;
 
-            let between = Uniform::from(0..data_index.len());
-            let mut rng = rand::thread_rng();
+            let between = Uniform::try_from(0..data_index.len()).unwrap();
+            let mut rng = rand::rng();
 
             let rand_index = between.sample(&mut rng);
 

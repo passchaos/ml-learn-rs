@@ -4,14 +4,87 @@ use std::collections::HashMap;
 
 use alg::{
     math::{
-        DigitalRecognition, Sigmoid, Softmax, loss::cross_entropy_error,
-        normalize::NormalizeTransform, one_hot::OneHotTransform,
+        DigitalRecognition, Sigmoid, Softmax, autodiff::numerical_gradient,
+        loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
     },
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
 use ndarray::{Array1, Array2, ArrayView1, Axis, array};
 use rand::Rng;
+
+struct TwoLayerNet {
+    w1: Array2<f32>,
+    b1: Array1<f32>,
+    w2: Array2<f32>,
+    b2: Array1<f32>,
+}
+
+impl TwoLayerNet {
+    fn new(
+        input_size: usize,
+        hidden_size: usize,
+        output_size: usize,
+        weight_init_std: f32,
+    ) -> Self {
+        let w1 = alg::math::stat::randn((input_size, hidden_size)) * weight_init_std;
+        let b1 = Array1::zeros(hidden_size);
+        let w2 = alg::math::stat::randn((hidden_size, output_size));
+        let b2 = Array1::zeros(output_size);
+
+        Self { w1, b1, w2, b2 }
+    }
+
+    fn predict(&self, x: &Array2<f32>) -> Array2<f32> {
+        let a1 = x.dot(&self.w1) + &self.b1;
+        let z1 = a1.sigmoid();
+        let a2 = z1.dot(&self.w2) + &self.b2;
+        let y = a2.softmax();
+
+        y
+    }
+
+    fn loss(&self, x: &Array2<f32>, t: Array2<f32>) -> f32 {
+        let y = self.predict(x);
+        cross_entropy_error(y, t)
+    }
+
+    fn accuracy(&self, x: &Array2<f32>, t: &Array2<f32>) -> f32 {
+        let mut y = self.predict(x);
+        let mut t = t.clone();
+
+        let y1 = y.map_axis_mut(Axis(1), |arr| {
+            arr.iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(idx, _)| idx)
+                .unwrap()
+        });
+        let t1 = t.map_axis_mut(Axis(1), |arr| {
+            arr.iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(idx, _)| idx)
+                .unwrap()
+        });
+
+        let accuracy = y1
+            .iter()
+            .zip(t1.iter())
+            .map(|(y_i, t_i)| if y_i == t_i { 1.0 } else { 0.0 })
+            .sum::<f32>()
+            / y1.len() as f32;
+
+        accuracy
+    }
+
+    fn numerical_gradient(&self, x: &Array2<f32>, t: &Array2<f32>) -> Self {
+        let loss_w = || self.loss(x, t.clone());
+
+        // numerical_gradient(f, x, delta)
+        todo!()
+    }
+}
 
 #[derive(Debug, Clone)]
 struct SimpleNet {
@@ -201,7 +274,10 @@ impl eframe::App for App {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::RwLock;
+
     use alg::math::autodiff::numerical_gradient;
+    use approx::assert_relative_eq;
     use ndarray::arr1;
 
     use super::*;
@@ -222,12 +298,38 @@ mod tests {
         let t = arr1(&[0.0, 0.0, 1.0]);
         println!("w: {net:?} p: {p} loss= {}", net.loss(&x, t.clone()));
 
-        let f1 = |w: Array2<f32>| {
-            let net = SimpleNet::new(w);
+        let f1 = |w: &Array2<f32>| {
+            let net = SimpleNet::new(w.clone());
             net.loss(&x, t.clone())
         };
 
-        let a = numerical_gradient(f1, w, 0.001);
+        let a = numerical_gradient(f1, &mut w, 0.001);
+
+        assert_relative_eq!(
+            a,
+            array![
+                [0.21924763, 0.14356247, -0.36281009],
+                [0.32887144, 0.2153437, -0.54421514]
+            ],
+            max_relative = 0.001
+        );
         println!("a: {a}");
+
+        // test for SimpleNet reuse
+        // let net = RwLock::new(SimpleNet::new(w.clone()));
+
+        // let f1 = |w: &Array2<f32>| net.read().unwrap().loss(&x, t.clone());
+
+        // let a = numerical_gradient(f1, &mut net.write().unwrap().w, 0.001);
+
+        // assert_relative_eq!(
+        //     a,
+        //     array![
+        //         [0.21924763, 0.14356247, -0.36281009],
+        //         [0.32887144, 0.2153437, -0.54421514]
+        //     ],
+        //     max_relative = 0.001
+        // );
+        // println!("a: {a}");
     }
 }

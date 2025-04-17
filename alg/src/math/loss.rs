@@ -1,4 +1,4 @@
-use ndarray::{Array, ArrayView, Dimension};
+use ndarray::{Array, ArrayD, ArrayView, Dimension};
 
 pub fn mean_squared_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) -> f32 {
     (y - t).mapv(|x| x.powi(2)).sum() / 2.0

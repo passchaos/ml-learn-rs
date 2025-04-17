@@ -3,6 +3,7 @@ pub mod autodiff;
 pub mod loss;
 pub mod normalize;
 pub mod one_hot;
+pub mod stat;
 
 pub struct DigitalRecognition;
 

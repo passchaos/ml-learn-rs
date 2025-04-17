@@ -1,6 +1,10 @@
-use std::ops::{Add, Div, Mul, Sub, SubAssign};
+use std::{
+    fmt::Debug,
+    ops::{Add, Div, Mul, Sub, SubAssign},
+};
 
 use ndarray::{Array, Dimension, NdIndex};
+use rand::TryRngCore;
 
 pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy>(
     f: fn(T) -> T,
@@ -14,11 +18,12 @@ pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + C
 }
 
 pub fn numerical_gradient<
-    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy,
+    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy + Debug,
     D: Dimension,
+    F: FnMut(&Array<T, D>) -> T,
 >(
-    f: impl Fn(Array<T, D>) -> T,
-    x: Array<T, D>,
+    mut f: F,
+    x: &mut Array<T, D>,
     delta: T,
 ) -> Array<T, D>
 where
@@ -26,42 +31,51 @@ where
 {
     let mut res = x.clone();
 
-    for (idx, v) in x.clone().indexed_iter() {
-        let mut new_x_1 = x.clone();
-        new_x_1[idx.clone()] = *v + delta;
+    let idx_iter: Vec<_> = x.indexed_iter().map(|(idx, _)| idx).clone().collect();
 
-        let mut new_x_2 = x.clone();
-        new_x_2[idx.clone()] = *v - delta;
+    for idx in idx_iter {
+        let tmp_val = x[idx.clone()];
 
-        res[idx] = (f(new_x_1) - f(new_x_2)) / (delta + delta);
+        x[idx.clone()] = tmp_val + delta;
+        let fxh1 = f(x);
+
+        x[idx.clone()] = tmp_val - delta;
+        let fxh2 = f(x);
+
+        res[idx.clone()] = (fxh1 - fxh2) / (delta + delta);
+
+        x[idx] = tmp_val;
     }
 
     res
 }
 
 pub fn gradient_descent<
-    T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Mul<Output = T> + SubAssign + Copy,
+    T: Sub<Output = T>
+        + Add<Output = T>
+        + Div<Output = T>
+        + Mul<Output = T>
+        + SubAssign
+        + Copy
+        + Debug,
     D: Dimension,
 >(
-    f: fn(Array<T, D>) -> T,
+    f: fn(&Array<T, D>) -> T,
     delta: T,
-    init_x: Array<T, D>,
+    x: &mut Array<T, D>,
     lr: T,
     step_num: usize,
-) -> Array<T, D>
-where
+) where
     D::Pattern: NdIndex<D>,
 {
-    let mut x = init_x;
-
     for _ in 0..step_num {
-        let mut grad = numerical_gradient(f, x.clone(), delta);
+        let mut grad = numerical_gradient(f, x, delta);
+        println!("grad: {grad:?}");
+
         grad.mapv_inplace(|a| a * lr);
 
-        x -= &grad;
+        *x = &*x - &grad;
     }
-
-    x
 }
 
 #[cfg(test)]
@@ -85,23 +99,29 @@ mod tests {
 
     #[test]
     fn test_numerical_gradient() {
-        let f1 = |x: Array1<f64>| x.pow2().sum();
+        let f1 = |x: &Array1<f64>| x.pow2().sum();
 
-        let g1 = numerical_gradient(f1, array![3.0, 4.0], 1e-4);
-        let g2 = numerical_gradient(f1, array![0.0, 2.0], 1e-4);
-        let g3 = numerical_gradient(f1, array![3.0, 0.0], 1e-4);
+        let g1 = numerical_gradient(f1, &mut array![3.0, 4.0], 1e-4);
+        let g2 = numerical_gradient(f1, &mut array![0.0, 2.0], 1e-4);
+        let g3 = numerical_gradient(f1, &mut array![3.0, 0.0], 1e-4);
+        assert_relative_eq!(g1, array![6.0, 8.0], max_relative = 0.0001);
+        assert_relative_eq!(g2, array![0.0, 4.0], max_relative = 0.0001);
+        assert_relative_eq!(g3, array![6.0, 0.0], max_relative = 0.0001);
         println!("g1: {g1} g2= {g2} g3= {g3}");
 
-        let f2 = |x: Array2<f64>| x.pow2().sum();
-        let g4 = numerical_gradient(f2, array![[1.0, 2.0], [3.0, 4.0]], 1e-4);
+        let f2 = |x: &Array2<f64>| x.pow2().sum();
+        let g4 = numerical_gradient(f2, &mut array![[1.0, 2.0], [3.0, 4.0]], 1e-4);
+
+        assert_relative_eq!(g4, array![[2.0, 4.0], [6.0, 8.0]], max_relative = 0.0001);
         println!("g4: {g4}");
     }
 
     #[test]
     fn test_gradient_descent() {
-        let f = |x: Array1<f32>| x.pow2().sum();
+        let f = |x: &Array1<f32>| x.pow2().sum();
 
-        let x = gradient_descent(f, 1e-4, array![-3.0, 4.0], 0.1, 100);
+        let mut x = array![-3.0, 4.0];
+        gradient_descent(f, 1e-4, &mut x, 0.1, 100);
         println!("x: {x}");
 
         assert_relative_eq!(x, array![0.0, 0.0]);
