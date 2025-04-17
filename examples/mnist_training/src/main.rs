@@ -10,7 +10,7 @@ use alg::{
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
-use ndarray::{Array1, Array2, ArrayView1, Axis, array};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, array, s};
 use rand::Rng;
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl TwoLayerNet {
         Self { w1, b1, w2, b2 }
     }
 
-    fn predict(&self, x: &Array2<f32>) -> Array2<f32> {
+    fn predict(&self, x: &ArrayView2<f32>) -> Array2<f32> {
         let a1 = x.dot(&self.w1) + &self.b1;
         let z1 = a1.sigmoid();
         let a2 = z1.dot(&self.w2) + &self.b2;
@@ -45,12 +45,12 @@ impl TwoLayerNet {
         y
     }
 
-    fn loss(&self, x: &Array2<f32>, t: Array2<f32>) -> f32 {
+    fn loss(&self, x: &ArrayView2<f32>, t: Array2<f32>) -> f32 {
         let y = self.predict(x);
         cross_entropy_error(y, t)
     }
 
-    fn accuracy(&self, x: &Array2<f32>, t: &Array2<f32>) -> f32 {
+    fn accuracy(&self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
         let mut y = self.predict(x);
         let mut t = t.clone();
 
@@ -79,7 +79,7 @@ impl TwoLayerNet {
         accuracy
     }
 
-    fn numerical_gradient(&mut self, x: &Array2<f32>, t: &Array2<f32>) -> Self {
+    fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
         let mut w1 = self.w1.clone();
         let mut b1 = self.b1.clone();
         let mut w2 = self.w2.clone();
@@ -247,6 +247,33 @@ fn main() {
         t_test.shape()
     );
 
+    let iters_num = 10000;
+    let train_size = x_train.shape()[0];
+    let batch_size = 100;
+    let learning_rate = 0.1;
+
+    let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
+
+    let mut rng = rand::rng();
+    for i in 0..iters_num {
+        let idx = rand::seq::index::sample(&mut rng, train_size, batch_size).into_vec();
+        println!("idx: {idx:?}");
+
+        let x_batch = x_train.select(Axis(0), &idx);
+        let t_batch = t_train.select(Axis(0), &idx);
+
+        let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
+
+        network.w1 = network.w1 - learning_rate * grad.w1;
+        network.b1 = network.b1 - learning_rate * grad.b1;
+        network.w2 = network.w2 - learning_rate * grad.w2;
+        network.b2 = network.b2 - learning_rate * grad.b2;
+
+        let loss = network.loss(&x_batch.view(), t_batch);
+        println!("loss info: idx= {i} value= {loss}");
+    }
+    return;
+
     let network = init_network();
 
     eframe::run_native(
@@ -384,7 +411,7 @@ mod tests {
         let x = randn((100, 784));
         let t = randn((100, 10));
 
-        let grads = net.numerical_gradient(&x, &t);
+        let grads = net.numerical_gradient(&x.view(), &t);
         println!("grads: {grads:?}");
         // let t = net.predict(&x);
     }
