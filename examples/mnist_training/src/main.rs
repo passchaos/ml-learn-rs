@@ -255,9 +255,10 @@ fn main() {
     let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
 
     let mut rng = rand::rng();
+
     for i in 0..iters_num {
+        let begin = std::time::Instant::now();
         let idx = rand::seq::index::sample(&mut rng, train_size, batch_size).into_vec();
-        println!("idx: {idx:?}");
 
         let x_batch = x_train.select(Axis(0), &idx);
         let t_batch = t_train.select(Axis(0), &idx);
@@ -270,7 +271,9 @@ fn main() {
         network.b2 = network.b2 - learning_rate * grad.b2;
 
         let loss = network.loss(&x_batch.view(), t_batch);
-        println!("loss info: idx= {i} value= {loss}");
+
+        let elapsed = begin.elapsed();
+        println!("loss info: idx= {i} value= {loss} elapsed= {elapsed:?}");
     }
     return;
 
