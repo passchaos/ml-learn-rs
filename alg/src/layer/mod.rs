@@ -1,9 +1,13 @@
 pub mod add;
 pub mod mul;
+pub mod relu;
+pub mod sigmoid;
 
 #[cfg(test)]
 mod tests {
-    use super::{add::AddLayer, mul::MulLayer};
+    use ndarray::array;
+
+    use super::{add::AddLayer, mul::MulLayer, relu::ReluLayer};
 
     #[test]
     fn test_add_mul_layer() {
@@ -33,5 +37,20 @@ mod tests {
         println!(
             "dapple_num= {dapple_num} dapple= {dapple} dorange_num= {dorange_num} dorange= {dorange} dtax= {dtax}"
         );
+    }
+
+    #[test]
+    fn test_relu() {
+        let mut layer = ReluLayer::default();
+        let x = array![-4, 1, 2, 3];
+        let res = layer.forward(&x.view());
+
+        println!("layer: {layer:?}");
+        assert_eq!(res, array![0, 1, 2, 3]);
+
+        let d_x = layer.backward(&x.view());
+
+        assert_eq!(d_x, array![0, 1, 2, 3]);
+        println!("res: {res} d_x= {d_x}");
     }
 }

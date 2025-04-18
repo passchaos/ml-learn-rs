@@ -147,6 +147,7 @@ dependencies = [
  "byteorder",
  "ndarray",
  "ndarray-linalg",
+ "num",
  "rand 0.9.0",
  "safetensors",
  "serde",
