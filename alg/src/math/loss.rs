@@ -1,10 +1,15 @@
-use ndarray::{Array, ArrayD, ArrayView, Dimension};
+use std::ops::Add;
+
+use ndarray::{Array, ArrayD, ArrayView, Dimension, NdFloat};
 
 pub fn mean_squared_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) -> f32 {
     (y - t).mapv(|x| x.powi(2)).sum() / 2.0
 }
 
-pub fn cross_entropy_error<D: Dimension>(y: Array<f32, D>, t: Array<f32, D>) -> f32 {
+pub fn cross_entropy_error<T: NdFloat + From<f32>, D: Dimension>(
+    y: Array<T, D>,
+    t: Array<T, D>,
+) -> T {
     let mut y = y.into_dyn();
     let mut t = t.into_dyn();
 
@@ -16,10 +21,14 @@ pub fn cross_entropy_error<D: Dimension>(y: Array<f32, D>, t: Array<f32, D>) -> 
         y = y.into_shape_with_order((1, len)).unwrap().into_dyn();
     }
 
-    let batch_size = y.shape()[0];
+    let batch_size = y.shape()[0] as f32;
 
-    let y1 = (y.mapv(|a| a + delta)).ln();
-    -1.0 * (t * y1).sum() / batch_size as f32
+    let y1 = y.mapv(|a| (a + delta.into()));
+    let y1 = y1.ln();
+
+    let mut v1 = t * y1;
+    v1.mapv_inplace(|a| a * (-1.0).into());
+    v1.sum() / batch_size.into()
 }
 
 #[cfg(test)]

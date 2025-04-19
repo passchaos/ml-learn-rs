@@ -1,7 +1,9 @@
 pub mod add;
+pub mod affine;
 pub mod mul;
 pub mod relu;
 pub mod sigmoid;
+pub mod softmax_loss;
 
 #[cfg(test)]
 mod tests {
@@ -52,5 +54,9 @@ mod tests {
 
         assert_eq!(d_x, array![0, 1, 2, 3]);
         println!("res: {res} d_x= {d_x}");
+
+        let a = array![1, 2];
+        let b = array![[1, 2, 3], [4, 5, 6]];
+        println!("a * b: {}", a.dot(&b));
     }
 }
