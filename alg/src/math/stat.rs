@@ -1,5 +1,5 @@
 use ndarray::{Array, Dimension, ShapeBuilder};
-use rand::Rng;
+use rand_distr::Distribution;
 
 pub fn randn<S, D>(shape: S) -> Array<f32, D>
 where
@@ -9,8 +9,9 @@ where
     let mut arr = Array::zeros(shape);
 
     let mut rng = rand::rng();
+    let normal = rand_distr::Normal::new(0.0, 1.0).unwrap();
 
-    arr.mapv_inplace(|_a| rng.random_range(0.0..1.0));
+    arr.mapv_inplace(|_a| normal.sample(&mut rng));
 
     arr
 }

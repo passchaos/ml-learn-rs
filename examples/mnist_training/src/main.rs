@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use alg::{
     math::{
-        DigitalRecognition, Sigmoid, Softmax, autodiff::numerical_gradient,
+        DigitalRecognition, Relu, Sigmoid, Softmax, autodiff::numerical_gradient,
         loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
     },
     tensor::safetensors::Load,
@@ -30,7 +30,7 @@ impl TwoLayerNet {
     ) -> Self {
         let w1 = alg::math::stat::randn((input_size, hidden_size)) * weight_init_std;
         let b1 = Array1::zeros(hidden_size);
-        let w2 = alg::math::stat::randn((hidden_size, output_size));
+        let w2 = alg::math::stat::randn((hidden_size, output_size)) * weight_init_std;
         let b2 = Array1::zeros(output_size);
 
         Self { w1, b1, w2, b2 }
@@ -38,7 +38,8 @@ impl TwoLayerNet {
 
     fn predict(&self, x: &ArrayView2<f32>) -> Array2<f32> {
         let a1 = x.dot(&self.w1) + &self.b1;
-        let z1 = a1.sigmoid();
+        // let z1 = a1.sigmoid();
+        let z1 = a1.relu();
         let a2 = z1.dot(&self.w2) + &self.b2;
         let y = a2.softmax();
 
