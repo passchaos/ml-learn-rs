@@ -322,7 +322,7 @@ fn main() {
         t_test.shape()
     );
 
-    let iters_num = 20000;
+    let iters_num = 2000;
     let train_size = x_train.shape()[0];
     let batch_size = 100;
     let learning_rate = 0.1;
@@ -368,14 +368,7 @@ fn main() {
         println!(
             "loss info: idx= {i} inner_value= {loss_inner} value= {loss} elapsed= {elapsed:?}"
         );
-
-        if loss.is_nan() {
-            return;
-        }
     }
-    return;
-
-    let network = init_network();
 
     eframe::run_native(
         "mnist",
@@ -395,7 +388,7 @@ fn main() {
 }
 
 struct App {
-    network: HashMap<String, Array2<f32>>,
+    network: TwoLayerNetN,
     data: Array2<f32>,
     labels: Array2<f32>,
     idx: usize,
@@ -419,8 +412,10 @@ impl eframe::App for App {
                 .to_vec();
 
             let img_data_a = self.data.index_axis(Axis(0), self.idx);
+            let img_data_b = img_data_a.to_shape((1, img_data_a.len())).unwrap();
 
-            let result = predict(&self.network, img_data_a).to_vec();
+            let result = self.network.predict(&img_data_b.view());
+            // let result = predict(&self.network, img_data_a).to_vec();
 
             let image = ColorImage::from_gray([28, 28], &img_data);
             let texture = ctx.load_texture("abc", image, egui::TextureOptions::default());
