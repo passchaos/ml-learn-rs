@@ -7,7 +7,9 @@ pub mod softmax_loss;
 
 #[cfg(test)]
 mod tests {
-    use ndarray::array;
+    use ndarray::{Array1, ArrayView, array};
+
+    use crate::math::{Relu, autodiff::numerical_gradient};
 
     use super::{add::AddLayer, mul::MulLayer, relu::ReluLayer};
 
@@ -44,7 +46,7 @@ mod tests {
     #[test]
     fn test_relu() {
         let mut layer = ReluLayer::default();
-        let x = array![-4, 1, 2, 3];
+        let mut x = array![-4, 1, 2, 3];
         let res = layer.forward(&x.view());
 
         println!("layer: {layer:?}");
@@ -54,9 +56,5 @@ mod tests {
 
         assert_eq!(d_x, array![0, 1, 2, 3]);
         println!("res: {res} d_x= {d_x}");
-
-        let a = array![1, 2];
-        let b = array![[1, 2, 3], [4, 5, 6]];
-        println!("a * b: {}", a.dot(&b));
     }
 }

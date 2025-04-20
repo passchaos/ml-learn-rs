@@ -3,6 +3,7 @@ extern crate openblas_src;
 use std::collections::HashMap;
 
 use alg::{
+    layer::{affine::AffineLayer, relu::ReluLayer, softmax_loss::SoftmaxWithLossLayer},
     math::{
         DigitalRecognition, Relu, Sigmoid, Softmax, autodiff::numerical_gradient,
         loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
@@ -10,10 +11,82 @@ use alg::{
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, array, s};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2, array, s};
 use rand::Rng;
 
-#[derive(Debug)]
+struct TwoLayerNetN {
+    inner: TwoLayerNet,
+    affine1_layer: AffineLayer<f32>,
+    relu1_layer: ReluLayer<Ix2>,
+    affine2_layer: AffineLayer<f32>,
+    last_layer: SoftmaxWithLossLayer<f32, Ix2>,
+}
+
+impl From<TwoLayerNet> for TwoLayerNetN {
+    fn from(inner: TwoLayerNet) -> Self {
+        let affine1_layer = AffineLayer::new(inner.w1.clone(), inner.b1.clone());
+        let relu1_layer = ReluLayer::default();
+        let affine2_layer = AffineLayer::new(inner.w2.clone(), inner.b2.clone());
+        let last_layer = SoftmaxWithLossLayer::default();
+
+        Self {
+            inner,
+            affine1_layer,
+            relu1_layer,
+            affine2_layer,
+            last_layer,
+        }
+    }
+}
+
+impl TwoLayerNetN {
+    fn new(
+        input_size: usize,
+        hidden_size: usize,
+        output_size: usize,
+        weight_init_std: f32,
+    ) -> Self {
+        let inner = TwoLayerNet::new(input_size, hidden_size, output_size, weight_init_std);
+        inner.into()
+    }
+
+    fn predict(&mut self, x: &ArrayView2<f32>) -> Array2<f32> {
+        let a1 = self.affine1_layer.forward(x);
+        let z1 = self.relu1_layer.forward(&a1.view());
+        let a2 = self.affine2_layer.forward(&z1.view());
+
+        a2
+    }
+
+    fn loss(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
+        let y = self.predict(x);
+        self.last_layer.forward(&y, t)
+    }
+
+    fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
+        self.inner.numerical_gradient(x, t).into()
+    }
+
+    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
+        self.loss(x, t);
+
+        let dout = self.last_layer.backward();
+        let (dout2, dw2, db2) = self.affine2_layer.backward(&dout.view());
+        let dout = self.relu1_layer.backward(&dout2.view());
+        let (dout1, dw1, db1) = self.affine1_layer.backward(&dout.view());
+
+        let inner = TwoLayerNet {
+            w1: dw1,
+            b1: db1,
+            w2: dw2,
+            b2: db2,
+        };
+
+        inner.into()
+    }
+}
+
+#[derive(Clone, Debug)]
 struct TwoLayerNet {
     w1: Array2<f32>,
     b1: Array1<f32>,
@@ -250,10 +323,11 @@ fn main() {
 
     let iters_num = 10000;
     let train_size = x_train.shape()[0];
-    let batch_size = 100;
+    let batch_size = 10;
     let learning_rate = 0.1;
 
-    let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
+    // let mut network = TwoLayerNet::new(784, 50, 10, 0.1);
+    let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
 
     let mut rng = rand::rng();
 
@@ -263,18 +337,24 @@ fn main() {
 
         let x_batch = x_train.select(Axis(0), &idx);
         let t_batch = t_train.select(Axis(0), &idx);
+        println!("x= {x_batch} t= {t_batch}");
 
-        let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
+        let grad_old = network.numerical_gradient(&x_batch.view(), &t_batch);
+        let grad = network.gradient(&x_batch.view(), &t_batch);
+        println!("w1: old= {} new= {}", grad_old.inner.w1, grad.inner.w1);
+        return;
 
-        network.w1 = network.w1 - learning_rate * grad.w1;
-        network.b1 = network.b1 - learning_rate * grad.b1;
-        network.w2 = network.w2 - learning_rate * grad.w2;
-        network.b2 = network.b2 - learning_rate * grad.b2;
+        // let mut inner_network = grad.inner.clone();
+        // inner_network.w1 *= (1.0 - learning_rate);
+        // inner_network.b1 *= (1.0 - learning_rate);
+        // inner_network.w2 *= (1.0 - learning_rate);
+        // inner_network.b2 *= (1.0 - learning_rate);
 
-        let loss = network.loss(&x_batch.view(), t_batch);
+        // network = inner_network.into();
+        // let loss = network.loss(&x_batch.view(), &t_batch);
 
-        let elapsed = begin.elapsed();
-        println!("loss info: idx= {i} value= {loss} elapsed= {elapsed:?}");
+        // let elapsed = begin.elapsed();
+        // println!("loss info: idx= {i} value= {loss} elapsed= {elapsed:?}");
     }
     return;
 

@@ -1,4 +1,7 @@
-use ndarray::{Array, Dimension};
+use std::{cmp::Ordering, ops::Sub};
+
+use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, NdFloat, RawData};
+use num::traits::float::TotalOrder;
 pub mod autodiff;
 pub mod loss;
 pub mod normalize;
@@ -7,16 +10,29 @@ pub mod stat;
 
 pub struct DigitalRecognition;
 
+pub trait Max {
+    type Output;
+    fn max_val(&self) -> &Self::Output;
+}
+
+impl<T: TotalOrder, S: Data<Elem = T>, D: Dimension> Max for ArrayBase<S, D> {
+    type Output = T;
+
+    fn max_val(&self) -> &Self::Output {
+        self.iter().max_by(|a, b| a.total_cmp(b)).unwrap()
+    }
+}
+
 pub trait Softmax {
     type Output;
     fn softmax(&self) -> Self::Output;
 }
 
-impl<D: Dimension> Softmax for Array<f64, D> {
-    type Output = Array<f64, D>;
+impl<T: NdFloat + TotalOrder> Softmax for Array1<T> {
+    type Output = Array1<T>;
 
     fn softmax(&self) -> Self::Output {
-        let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
+        let max = self.max_val();
 
         let exp_a = (self - *max).exp();
 
@@ -26,17 +42,31 @@ impl<D: Dimension> Softmax for Array<f64, D> {
     }
 }
 
-impl<D: Dimension> Softmax for Array<f32, D> {
-    type Output = Array<f32, D>;
+impl<T: NdFloat + TotalOrder> Softmax for Array2<T> {
+    type Output = Array2<T>;
 
     fn softmax(&self) -> Self::Output {
-        let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
+        let max = self.map_axis(Axis(1), |a| *(a.max_val()));
 
-        let exp_a = (self - *max).exp();
+        let mut exp_a = self.clone();
+        for (mut a, b) in exp_a.axis_iter_mut(Axis(0)).zip(max.into_iter()) {
+            a.map_inplace(|x| *x = (*x - b).exp());
 
-        let sum = exp_a.sum();
+            let sum = a.sum();
 
-        exp_a / sum
+            a.map_inplace(|x| *x /= sum);
+        }
+
+        exp_a
+
+        // let max = self.map_axis(Axis(1), |a| a.max().unwrap());
+        // let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
+
+        // let exp_a = (self - *max).exp();
+
+        // let sum = exp_a.sum();
+
+        // exp_a / sum
     }
 }
 
@@ -145,6 +175,27 @@ mod tests {
         let dest = array![0.01821127, 0.24519181, 0.73659691];
 
         assert_relative_eq!(sm, dest, max_relative = 0.000001);
+
+        let a = array![
+            [0.1, 0.05, 0.6, 0., 0.05, 0.1, 0., 0.1, 0., 0.],
+            [0.1, 0.15, 0.5, 0., 0.05, 0.1, 0., 0.1, 0., 0.]
+        ];
+
+        let sv = a.softmax();
+        assert_relative_eq!(
+            sv,
+            array![
+                [
+                    0.09832329, 0.09352801, 0.16210771, 0.0889666, 0.09352801, 0.09832329,
+                    0.0889666, 0.09832329, 0.0889666, 0.0889666
+                ],
+                [
+                    0.09887603, 0.10394551, 0.1475057, 0.08946673, 0.09405379, 0.09887603,
+                    0.08946673, 0.09887603, 0.08946673, 0.08946673
+                ]
+            ],
+            max_relative = 0.000001
+        );
     }
 
     #[test]
