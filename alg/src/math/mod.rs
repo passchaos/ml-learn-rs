@@ -46,6 +46,13 @@ impl<T: NdFloat + TotalOrder> Softmax for Array2<T> {
     type Output = Array2<T>;
 
     fn softmax(&self) -> Self::Output {
+        // let max = self.max_val();
+
+        // let exp_a = (self - *max).exp();
+
+        // let sum = exp_a.sum();
+
+        // exp_a / sum
         let max = self.map_axis(Axis(1), |a| *(a.max_val()));
 
         let mut exp_a = self.clone();

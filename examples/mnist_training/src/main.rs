@@ -112,8 +112,8 @@ impl TwoLayerNet {
 
     fn predict(&self, x: &ArrayView2<f32>) -> Array2<f32> {
         let a1 = x.dot(&self.w1) + &self.b1;
-        let z1 = a1.sigmoid();
-        // let z1 = a1.relu();
+        // let z1 = a1.sigmoid();
+        let z1 = a1.relu();
         let a2 = z1.dot(&self.w2) + &self.b2;
         let y = a2.softmax();
 
@@ -322,13 +322,13 @@ fn main() {
         t_test.shape()
     );
 
-    let iters_num = 10000;
+    let iters_num = 20000;
     let train_size = x_train.shape()[0];
     let batch_size = 100;
     let learning_rate = 0.1;
 
-    let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
-    // let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
+    // let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
+    let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
 
     let mut rng = rand::rng();
 
@@ -340,8 +340,8 @@ fn main() {
         let t_batch = t_train.select(Axis(0), &idx);
         // println!("x= {x_batch} t= {t_batch}");
 
-        let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
-        // let grad = network.gradient(&x_batch.view(), &t_batch);
+        // let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
+        let grad = network.gradient(&x_batch.view(), &t_batch);
 
         // println!("w1: old= {} new= {}", grad_old.inner.w1, grad.inner.w1);
 
@@ -350,7 +350,9 @@ fn main() {
         //     return;
         // }
 
-        let mut inner_network = grad.clone();
+        let grad = grad.inner;
+        let mut inner_network = network.inner.clone();
+        // let mut inner_network = network.clone();
         // let mut inner_network = grad.inner.clone();
         inner_network.w1 = (inner_network.w1 - learning_rate * grad.w1);
         inner_network.b1 = (inner_network.b1 - learning_rate * grad.b1);
