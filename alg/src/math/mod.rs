@@ -58,15 +58,6 @@ impl<T: NdFloat + TotalOrder> Softmax for Array2<T> {
         }
 
         exp_a
-
-        // let max = self.map_axis(Axis(1), |a| a.max().unwrap());
-        // let max = self.iter().max_by(|a, b| (*a).total_cmp(*b)).unwrap();
-
-        // let exp_a = (self - *max).exp();
-
-        // let sum = exp_a.sum();
-
-        // exp_a / sum
     }
 }
 

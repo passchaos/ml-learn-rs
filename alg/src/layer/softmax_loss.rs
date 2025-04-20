@@ -13,7 +13,6 @@ impl<T: Clone + NdFloat + From<f32>, D: Dimension> SoftmaxWithLossLayer<T, D> {
     where
         Array<T, D>: Softmax<Output = Array<T, D>>,
     {
-        println!("softmax_loss: x= {x:?} t= {t:?}");
         self.t = Some(t.clone());
         let y = x.softmax();
         self.y = Some(y.clone());

@@ -10,6 +10,7 @@ use alg::{
     },
     tensor::safetensors::Load,
 };
+use approx::relative_eq;
 use egui::{ColorImage, Image};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2, array, s};
 use rand::Rng;
@@ -111,17 +112,17 @@ impl TwoLayerNet {
 
     fn predict(&self, x: &ArrayView2<f32>) -> Array2<f32> {
         let a1 = x.dot(&self.w1) + &self.b1;
-        // let z1 = a1.sigmoid();
-        let z1 = a1.relu();
+        let z1 = a1.sigmoid();
+        // let z1 = a1.relu();
         let a2 = z1.dot(&self.w2) + &self.b2;
         let y = a2.softmax();
 
         y
     }
 
-    fn loss(&self, x: &ArrayView2<f32>, t: Array2<f32>) -> f32 {
+    fn loss(&self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
         let y = self.predict(x);
-        cross_entropy_error(y, t)
+        cross_entropy_error(y, t.clone())
     }
 
     fn accuracy(&self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
@@ -162,7 +163,7 @@ impl TwoLayerNet {
         let g_w1 = numerical_gradient(
             |w1: &Array2<f32>| {
                 self.w1 = w1.clone();
-                self.loss(x, t.clone())
+                self.loss(x, t)
             },
             &mut w1,
             0.01,
@@ -171,7 +172,7 @@ impl TwoLayerNet {
         let g_b1 = numerical_gradient(
             |b1: &Array1<f32>| {
                 self.b1 = b1.clone();
-                self.loss(x, t.clone())
+                self.loss(x, t)
             },
             &mut b1,
             0.01,
@@ -180,7 +181,7 @@ impl TwoLayerNet {
         let g_w2 = numerical_gradient(
             |w2: &Array2<f32>| {
                 self.w2 = w2.clone();
-                self.loss(x, t.clone())
+                self.loss(x, t)
             },
             &mut w2,
             0.01,
@@ -189,7 +190,7 @@ impl TwoLayerNet {
         let g_b2 = numerical_gradient(
             |b2: &Array1<f32>| {
                 self.b2 = b2.clone();
-                self.loss(x, t.clone())
+                self.loss(x, t)
             },
             &mut b2,
             0.01,
@@ -323,11 +324,11 @@ fn main() {
 
     let iters_num = 10000;
     let train_size = x_train.shape()[0];
-    let batch_size = 10;
+    let batch_size = 100;
     let learning_rate = 0.1;
 
-    // let mut network = TwoLayerNet::new(784, 50, 10, 0.1);
-    let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
+    let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
+    // let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
 
     let mut rng = rand::rng();
 
@@ -337,24 +338,38 @@ fn main() {
 
         let x_batch = x_train.select(Axis(0), &idx);
         let t_batch = t_train.select(Axis(0), &idx);
-        println!("x= {x_batch} t= {t_batch}");
+        // println!("x= {x_batch} t= {t_batch}");
 
-        let grad_old = network.numerical_gradient(&x_batch.view(), &t_batch);
-        let grad = network.gradient(&x_batch.view(), &t_batch);
-        println!("w1: old= {} new= {}", grad_old.inner.w1, grad.inner.w1);
-        return;
+        let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
+        // let grad = network.gradient(&x_batch.view(), &t_batch);
 
+        // println!("w1: old= {} new= {}", grad_old.inner.w1, grad.inner.w1);
+
+        // let va = relative_eq!(grad_old.inner.w1, grad.inner.w1);
+        // if !va {
+        //     return;
+        // }
+
+        let mut inner_network = grad.clone();
         // let mut inner_network = grad.inner.clone();
-        // inner_network.w1 *= (1.0 - learning_rate);
-        // inner_network.b1 *= (1.0 - learning_rate);
-        // inner_network.w2 *= (1.0 - learning_rate);
-        // inner_network.b2 *= (1.0 - learning_rate);
+        inner_network.w1 = (inner_network.w1 - learning_rate * grad.w1);
+        inner_network.b1 = (inner_network.b1 - learning_rate * grad.b1);
+        inner_network.w2 = (inner_network.w2 - learning_rate * grad.w2);
+        inner_network.b2 = (inner_network.b2 - learning_rate * grad.b2);
 
-        // network = inner_network.into();
-        // let loss = network.loss(&x_batch.view(), &t_batch);
+        let loss_inner = inner_network.loss(&x_batch.view(), &t_batch);
 
-        // let elapsed = begin.elapsed();
-        // println!("loss info: idx= {i} value= {loss} elapsed= {elapsed:?}");
+        network = inner_network.into();
+
+        let loss = network.loss(&x_batch.view(), &t_batch);
+        let elapsed = begin.elapsed();
+        println!(
+            "loss info: idx= {i} inner_value= {loss_inner} value= {loss} elapsed= {elapsed:?}"
+        );
+
+        if loss.is_nan() {
+            return;
+        }
     }
     return;
 

@@ -14,6 +14,7 @@ image = { workspace = true }
 safetensors = { workspace = true }
 memmap2 = { workspace = true }
 rand = { workspace = true }
+approx = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
