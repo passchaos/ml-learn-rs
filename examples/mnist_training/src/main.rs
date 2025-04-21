@@ -15,12 +15,104 @@ use egui::{ColorImage, Image};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2, array, s};
 use rand::Rng;
 
+struct Sgd {
+    lr: f32,
+}
+
+impl Sgd {
+    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
+        net.w1 = &net.w1 - self.lr * &grads.w1;
+        net.b1 = &net.b1 - self.lr * &grads.b1;
+        net.w2 = &net.w2 - self.lr * &grads.w2;
+        net.b2 = &net.b2 - self.lr * &grads.b2;
+    }
+}
+
+struct Momentum {
+    lr: f32,
+    momentum: f32,
+    v: Option<TwoLayerNet>,
+}
+
+impl Momentum {
+    fn new(lr: f32, momentum: f32) -> Self {
+        Self {
+            lr,
+            momentum,
+            v: None,
+        }
+    }
+
+    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
+        if self.v.is_none() {
+            let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
+            let b1 = Array1::zeros(net.b1.raw_dim());
+            let w2 = Array2::zeros(net.w2.raw_dim());
+            let b2 = Array1::zeros(net.b2.raw_dim());
+
+            self.v = Some(TwoLayerNet { w1, b1, w2, b2 });
+        }
+
+        let v = self.v.as_mut().unwrap();
+
+        v.w1 = self.momentum * &v.w1 - self.lr * &grads.w1;
+        v.b1 = self.momentum * &v.b1 - self.lr * &grads.b1;
+        v.w2 = self.momentum * &v.w2 - self.lr * &grads.w2;
+        v.b2 = self.momentum * &v.b2 - self.lr * &grads.b2;
+
+        net.w1 = &net.w1 + &v.w1;
+        net.b1 = &net.b1 + &v.b1;
+        net.w2 = &net.w2 + &v.w2;
+        net.b2 = &net.b2 + &v.b2;
+    }
+}
+
+struct AdaGrad {
+    lr: f32,
+    v: Option<TwoLayerNet>,
+}
+
+impl AdaGrad {
+    fn new(lr: f32) -> Self {
+        Self { lr, v: None }
+    }
+
+    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
+        if self.v.is_none() {
+            let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
+            let b1 = Array1::zeros(net.b1.raw_dim());
+            let w2 = Array2::zeros(net.w2.raw_dim());
+            let b2 = Array1::zeros(net.b2.raw_dim());
+
+            self.v = Some(TwoLayerNet { w1, b1, w2, b2 });
+        }
+
+        let v = self.v.as_mut().unwrap();
+
+        v.w1 = &v.w1 + &grads.w1 * &grads.w1;
+        v.b1 = &v.b1 + &grads.b1 * &grads.b1;
+        v.w2 = &v.w2 + &grads.w2 * &grads.w2;
+        v.b2 = &v.b2 + &grads.b2 * &grads.b2;
+
+        let w1_a = &grads.w1 / (v.w1.sqrt() + 1e-7);
+        let b1_a = &grads.b1 / (v.b1.sqrt() + 1e-7);
+        let w2_a = &grads.w2 / (v.w2.sqrt() + 1e-7);
+        let b2_a = &grads.b2 / (v.b2.sqrt() + 1e-7);
+
+        net.w1 = &net.w1 - self.lr * w1_a;
+        net.b1 = &net.b1 - self.lr * b1_a;
+        net.w2 = &net.w2 - self.lr * w2_a;
+        net.b2 = &net.b2 - self.lr * b2_a;
+    }
+}
+
 struct TwoLayerNetN {
     inner: TwoLayerNet,
     affine1_layer: AffineLayer<f32>,
     relu1_layer: ReluLayer<Ix2>,
     affine2_layer: AffineLayer<f32>,
     last_layer: SoftmaxWithLossLayer<f32, Ix2>,
+    optim: AdaGrad,
 }
 
 impl From<TwoLayerNet> for TwoLayerNetN {
@@ -29,6 +121,10 @@ impl From<TwoLayerNet> for TwoLayerNetN {
         let relu1_layer = ReluLayer::default();
         let affine2_layer = AffineLayer::new(inner.w2.clone(), inner.b2.clone());
         let last_layer = SoftmaxWithLossLayer::default();
+        // let optim = Sgd { lr: 0.1 };
+
+        // let optim = Momentum::new(0.1, 0.9);
+        let optim = AdaGrad::new(0.01);
 
         Self {
             inner,
@@ -36,6 +132,7 @@ impl From<TwoLayerNet> for TwoLayerNetN {
             relu1_layer,
             affine2_layer,
             last_layer,
+            optim,
         }
     }
 }
@@ -82,6 +179,18 @@ impl TwoLayerNetN {
             w2: dw2,
             b2: db2,
         };
+
+        inner.into()
+    }
+
+    fn update(self, grad: &TwoLayerNet) -> Self {
+        let Self {
+            mut inner,
+            mut optim,
+            ..
+        } = self;
+
+        optim.update(&mut inner, grad);
 
         inner.into()
     }
@@ -350,24 +459,23 @@ fn main() {
         //     return;
         // }
 
-        let grad = grad.inner;
-        let mut inner_network = network.inner.clone();
-        // let mut inner_network = network.clone();
-        // let mut inner_network = grad.inner.clone();
-        inner_network.w1 = (inner_network.w1 - learning_rate * grad.w1);
-        inner_network.b1 = (inner_network.b1 - learning_rate * grad.b1);
-        inner_network.w2 = (inner_network.w2 - learning_rate * grad.w2);
-        inner_network.b2 = (inner_network.b2 - learning_rate * grad.b2);
+        // let grad = grad.inner;
+        // let mut inner_network = network.inner.clone();
+        // // let mut inner_network = network.clone();
+        // // let mut inner_network = grad.inner.clone();
+        // inner_network.w1 = (inner_network.w1 - learning_rate * grad.w1);
+        // inner_network.b1 = (inner_network.b1 - learning_rate * grad.b1);
+        // inner_network.w2 = (inner_network.w2 - learning_rate * grad.w2);
+        // inner_network.b2 = (inner_network.b2 - learning_rate * grad.b2);
+        network = network.update(&grad.inner);
 
-        let loss_inner = inner_network.loss(&x_batch.view(), &t_batch);
+        // let loss_inner = inner_network.loss(&x_batch.view(), &t_batch);
 
-        network = inner_network.into();
+        // network = inner_network.into();
 
         let loss = network.loss(&x_batch.view(), &t_batch);
         let elapsed = begin.elapsed();
-        println!(
-            "loss info: idx= {i} inner_value= {loss_inner} value= {loss} elapsed= {elapsed:?}"
-        );
+        println!("loss info: idx= {i} loss= {loss} elapsed= {elapsed:?}");
     }
 
     eframe::run_native(
