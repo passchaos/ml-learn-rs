@@ -2399,6 +2399,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_extras",
+ "egui_plot",
  "image",
  "memmap2",
  "ndarray",

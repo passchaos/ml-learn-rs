@@ -1,6 +1,9 @@
 extern crate openblas_src;
 
-use std::collections::HashMap;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+};
 
 use alg::{
     layer::{affine::AffineLayer, relu::ReluLayer, softmax_loss::SoftmaxWithLossLayer},
@@ -10,16 +13,20 @@ use alg::{
     },
     tensor::safetensors::Load,
 };
-use approx::relative_eq;
 use egui::{ColorImage, Image};
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2, array, s};
-use rand::Rng;
+use egui_plot::{Legend, PlotPoints, Points};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2};
 
+trait SimpleOptimizer: Debug {
+    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet);
+}
+
+#[derive(Clone, Debug)]
 struct Sgd {
     lr: f32,
 }
 
-impl Sgd {
+impl SimpleOptimizer for Sgd {
     fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
         net.w1 = &net.w1 - self.lr * &grads.w1;
         net.b1 = &net.b1 - self.lr * &grads.b1;
@@ -28,21 +35,14 @@ impl Sgd {
     }
 }
 
+#[derive(Clone, Debug)]
 struct Momentum {
     lr: f32,
     momentum: f32,
     v: Option<TwoLayerNet>,
 }
 
-impl Momentum {
-    fn new(lr: f32, momentum: f32) -> Self {
-        Self {
-            lr,
-            momentum,
-            v: None,
-        }
-    }
-
+impl SimpleOptimizer for Momentum {
     fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
         if self.v.is_none() {
             let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
@@ -67,16 +67,23 @@ impl Momentum {
     }
 }
 
+impl Momentum {
+    fn new(lr: f32, momentum: f32) -> Self {
+        Self {
+            lr,
+            momentum,
+            v: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 struct AdaGrad {
     lr: f32,
     v: Option<TwoLayerNet>,
 }
 
-impl AdaGrad {
-    fn new(lr: f32) -> Self {
-        Self { lr, v: None }
-    }
-
+impl SimpleOptimizer for AdaGrad {
     fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
         if self.v.is_none() {
             let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
@@ -106,46 +113,32 @@ impl AdaGrad {
     }
 }
 
-struct TwoLayerNetN {
-    inner: TwoLayerNet,
+impl AdaGrad {
+    fn new(lr: f32) -> Self {
+        Self { lr, v: None }
+    }
+}
+
+struct Layers {
     affine1_layer: AffineLayer<f32>,
     relu1_layer: ReluLayer<Ix2>,
     affine2_layer: AffineLayer<f32>,
     last_layer: SoftmaxWithLossLayer<f32, Ix2>,
-    optim: AdaGrad,
 }
 
-impl From<TwoLayerNet> for TwoLayerNetN {
-    fn from(inner: TwoLayerNet) -> Self {
+impl Layers {
+    fn new(inner: &TwoLayerNet) -> Self {
         let affine1_layer = AffineLayer::new(inner.w1.clone(), inner.b1.clone());
         let relu1_layer = ReluLayer::default();
         let affine2_layer = AffineLayer::new(inner.w2.clone(), inner.b2.clone());
         let last_layer = SoftmaxWithLossLayer::default();
-        // let optim = Sgd { lr: 0.1 };
-
-        // let optim = Momentum::new(0.1, 0.9);
-        let optim = AdaGrad::new(0.01);
 
         Self {
-            inner,
             affine1_layer,
             relu1_layer,
             affine2_layer,
             last_layer,
-            optim,
         }
-    }
-}
-
-impl TwoLayerNetN {
-    fn new(
-        input_size: usize,
-        hidden_size: usize,
-        output_size: usize,
-        weight_init_std: f32,
-    ) -> Self {
-        let inner = TwoLayerNet::new(input_size, hidden_size, output_size, weight_init_std);
-        inner.into()
     }
 
     fn predict(&mut self, x: &ArrayView2<f32>) -> Array2<f32> {
@@ -161,11 +154,7 @@ impl TwoLayerNetN {
         self.last_layer.forward(&y, t)
     }
 
-    fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
-        self.inner.numerical_gradient(x, t).into()
-    }
-
-    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
+    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
         self.loss(x, t);
 
         let dout = self.last_layer.backward();
@@ -180,20 +169,58 @@ impl TwoLayerNetN {
             b2: db2,
         };
 
-        inner.into()
+        inner
+    }
+}
+
+struct TwoLayerNetN<S> {
+    inner: TwoLayerNet,
+    layers: Layers,
+    optim: S,
+}
+
+impl<S> TwoLayerNetN<S> {
+    fn new(inner: TwoLayerNet, optim: S) -> Self {
+        let layers = Layers::new(&inner);
+
+        Self {
+            inner,
+            layers,
+            optim,
+        }
     }
 
-    fn update(self, grad: &TwoLayerNet) -> Self {
-        let Self {
-            mut inner,
-            mut optim,
-            ..
-        } = self;
-
-        optim.update(&mut inner, grad);
-
-        inner.into()
+    fn predict(&mut self, x: &ArrayView2<f32>) -> Array2<f32> {
+        self.layers.predict(x)
     }
+
+    fn loss(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
+        self.layers.loss(x, t)
+    }
+
+    fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
+        self.inner.numerical_gradient(x, t)
+    }
+
+    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
+        self.layers.gradient(x, t)
+    }
+}
+
+impl<S: SimpleOptimizer> TwoLayerNetN<S> {
+    fn update(&mut self, grad: &TwoLayerNet) {
+        // 因为inner网络发生了更新，所以需要重新生成计算图
+        self.optim.update(&mut self.inner, grad);
+
+        self.layers = Layers::new(&self.inner);
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WeightGenerator {
+    Std(f32),
+    Xavier,
+    He,
 }
 
 #[derive(Clone, Debug)]
@@ -209,11 +236,24 @@ impl TwoLayerNet {
         input_size: usize,
         hidden_size: usize,
         output_size: usize,
-        weight_init_std: f32,
+        init_weight_generator: WeightGenerator,
     ) -> Self {
-        let w1 = alg::math::stat::randn((input_size, hidden_size)) * weight_init_std;
+        let w1 = alg::math::stat::randn((input_size, hidden_size)) * 0.01;
+
+        let w2 = match init_weight_generator {
+            WeightGenerator::Std(init_std) => {
+                alg::math::stat::randn((hidden_size, output_size)) * init_std
+            }
+            WeightGenerator::Xavier => {
+                alg::math::stat::randn((hidden_size, output_size)) / (hidden_size as f32).sqrt()
+            }
+            WeightGenerator::He => {
+                alg::math::stat::randn((hidden_size, output_size))
+                    / (2.0 * hidden_size as f32).sqrt()
+            }
+        };
+
         let b1 = Array1::zeros(hidden_size);
-        let w2 = alg::math::stat::randn((hidden_size, output_size)) * weight_init_std;
         let b2 = Array1::zeros(output_size);
 
         Self { w1, b1, w2, b2 }
@@ -314,6 +354,235 @@ impl TwoLayerNet {
     }
 }
 
+fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
+    let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
+
+    let train_data_path = mnist_dir.join("train-images-idx3-ubyte");
+    let train_data = alg::dataset::mnist::load_images(train_data_path);
+    let train_data = DigitalRecognition::normalize(&train_data);
+
+    let label_data_path = mnist_dir.join("train-labels-idx1-ubyte");
+    let train_labels = alg::dataset::mnist::load_labels(label_data_path);
+    let train_labels = DigitalRecognition::one_hot(&train_labels);
+
+    let test_data_path = mnist_dir.join("t10k-images-idx3-ubyte");
+    let test_data = alg::dataset::mnist::load_images(test_data_path);
+    let test_data = DigitalRecognition::normalize(&test_data);
+
+    let label_data_path = mnist_dir.join("t10k-labels-idx1-ubyte");
+    let test_labels = alg::dataset::mnist::load_labels(label_data_path);
+    let test_labels = DigitalRecognition::one_hot(&test_labels);
+
+    ((train_data, train_labels), (test_data, test_labels))
+}
+
+fn train_action<S: SimpleOptimizer>(
+    mut network: TwoLayerNetN<S>,
+    iters_num: i32,
+    train_size: usize,
+    batch_size: usize,
+    x_train: &Array2<f32>,
+    t_train: &Array2<f32>,
+) -> Vec<f32> {
+    println!("begin train action: network= {:?}", network.optim);
+
+    let mut rng = rand::rng();
+
+    let mut losses = Vec::new();
+
+    for i in 0..iters_num {
+        let begin = std::time::Instant::now();
+        let idx = rand::seq::index::sample(&mut rng, train_size, batch_size).into_vec();
+
+        let x_batch = x_train.select(Axis(0), &idx);
+        let t_batch = t_train.select(Axis(0), &idx);
+
+        let grad = network.gradient(&x_batch.view(), &t_batch);
+
+        network.update(&grad);
+
+        let loss = network.loss(&x_batch.view(), &t_batch);
+        let elapsed = begin.elapsed();
+        println!("loss info: idx= {i} loss= {loss} elapsed= {elapsed:?}");
+
+        losses.push(loss);
+    }
+
+    losses
+}
+
+fn main() {
+    let ((x_train, t_train), (x_test, t_test)) = load_mnist();
+
+    println!(
+        "{:?} {:?} {:?} {:?}",
+        x_train.shape(),
+        t_train.shape(),
+        x_test.shape(),
+        t_test.shape()
+    );
+
+    let iters_num = 2000;
+    let train_size = x_train.shape()[0];
+    let batch_size = 100;
+
+    let mut optims: BTreeMap<&str, Box<dyn SimpleOptimizer>> = BTreeMap::new();
+    let sgd = Sgd { lr: 0.1 };
+    optims.insert("SGD", Box::new(sgd));
+    let momentum = Momentum::new(0.1, 0.9);
+    optims.insert("Momentum", Box::new(momentum));
+    let ada_grad = AdaGrad::new(0.1);
+    optims.insert("AdaGrad", Box::new(ada_grad));
+
+    let mut losses_map = BTreeMap::new();
+
+    let weight_generators = vec![
+        WeightGenerator::Std(0.01),
+        WeightGenerator::Xavier,
+        WeightGenerator::He,
+    ];
+
+    let sgd = Sgd { lr: 0.1 };
+    let momentum = Momentum::new(0.1, 0.9);
+    let ada_grad = AdaGrad::new(0.1);
+
+    for weight_generator in &weight_generators {
+        let mut inner = TwoLayerNet::new(784, 50, 10, *weight_generator);
+
+        let network = TwoLayerNetN::new(inner.clone(), sgd.clone());
+        let losses = train_action(
+            network, iters_num, train_size, batch_size, &x_train, &t_train,
+        );
+
+        losses_map
+            .entry("SGD".to_string())
+            .or_insert_with(|| BTreeMap::new())
+            .insert(format!("{weight_generator:?}"), losses);
+
+        let network = TwoLayerNetN::new(inner.clone(), momentum.clone());
+        let losses = train_action(
+            network, iters_num, train_size, batch_size, &x_train, &t_train,
+        );
+
+        losses_map
+            .entry("Momentum".to_string())
+            .or_insert_with(|| BTreeMap::new())
+            .insert(format!("{weight_generator:?}"), losses);
+
+        let network = TwoLayerNetN::new(inner.clone(), ada_grad.clone());
+        let losses = train_action(
+            network, iters_num, train_size, batch_size, &x_train, &t_train,
+        );
+
+        losses_map
+            .entry("AdaGrad".to_string())
+            .or_insert_with(|| BTreeMap::new())
+            .insert(format!("{weight_generator:?}"), losses);
+    }
+
+    let app = LossApp { losses_map };
+
+    eframe::run_native(
+        "mnist",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+
+            Ok(Box::new(app))
+            // Ok(Box::new(App {
+            //     network,
+            //     data: x_train,
+            //     labels: t_train,
+            //     idx: 0,
+            // }))
+        }),
+    )
+    .unwrap();
+}
+
+struct LossApp {
+    losses_map: BTreeMap<String, BTreeMap<String, Vec<f32>>>,
+}
+
+impl eframe::App for LossApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let legend = Legend::default().position(egui_plot::Corner::RightTop);
+            egui_plot::Plot::new(format!("plot"))
+                .legend(legend)
+                .show(ui, |plot_ui| {
+                    for (optim_name, weight_losses) in &self.losses_map {
+                        for (weight_generator, losses) in weight_losses {
+                            let points = losses
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, loss)| [idx as f64, *loss as f64]);
+
+                            let points = PlotPoints::from_iter(points);
+
+                            plot_ui.points(
+                                Points::new(points)
+                                    .name(format!("{optim_name}_{weight_generator}")),
+                            );
+                        }
+                    }
+                });
+        });
+    }
+}
+
+struct App<S> {
+    network: TwoLayerNetN<S>,
+    data: Array2<f32>,
+    labels: Array2<f32>,
+    idx: usize,
+}
+
+impl<S> eframe::App for App<S> {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let data_0_len = self.data.len_of(Axis(0));
+
+            ui.label(format!("current data row: {}", self.idx));
+
+            if ui.button("<---").clicked() {
+                self.idx = (self.idx + data_0_len - 1) % data_0_len;
+            }
+
+            let img_data = self
+                .data
+                .index_axis(Axis(0), self.idx)
+                .map(|a| (a * 255.0) as u8)
+                .to_vec();
+
+            let img_data_a = self.data.index_axis(Axis(0), self.idx);
+            let img_data_b = img_data_a.to_shape((1, img_data_a.len())).unwrap();
+
+            let result = self.network.predict(&img_data_b.view());
+            // let result = predict(&self.network, img_data_a).to_vec();
+
+            let image = ColorImage::from_gray([28, 28], &img_data);
+            let texture = ctx.load_texture("abc", image, egui::TextureOptions::default());
+
+            let img = Image::new(&texture).shrink_to_fit();
+            ui.add_sized([300.0, 300.0], img);
+
+            if ui.button("--->").clicked() {
+                self.idx = (self.idx + 1) % data_0_len;
+            }
+
+            let mut res: Vec<_> = (0..=9).into_iter().zip(result.into_iter()).collect();
+            res.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+            let actual_label = self.labels.index_axis(Axis(0), self.idx);
+
+            ui.label(format!(
+                "actual label: {actual_label} predicted label: {res:?}"
+            ));
+        });
+    }
+}
+
 #[derive(Debug, Clone)]
 struct SimpleNet {
     w: Array2<f32>,
@@ -398,162 +667,13 @@ fn predict(network: &HashMap<String, Array2<f32>>, x: ArrayView1<f32>) -> Array1
     y
 }
 
-fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
-    let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
-
-    let train_data_path = mnist_dir.join("train-images-idx3-ubyte");
-    let train_data = alg::dataset::mnist::load_images(train_data_path);
-    let train_data = DigitalRecognition::normalize(&train_data);
-
-    let label_data_path = mnist_dir.join("train-labels-idx1-ubyte");
-    let train_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let train_labels = DigitalRecognition::one_hot(&train_labels);
-
-    let test_data_path = mnist_dir.join("t10k-images-idx3-ubyte");
-    let test_data = alg::dataset::mnist::load_images(test_data_path);
-    let test_data = DigitalRecognition::normalize(&test_data);
-
-    let label_data_path = mnist_dir.join("t10k-labels-idx1-ubyte");
-    let test_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let test_labels = DigitalRecognition::one_hot(&test_labels);
-
-    ((train_data, train_labels), (test_data, test_labels))
-}
-
-fn main() {
-    let ((x_train, t_train), (x_test, t_test)) = load_mnist();
-
-    println!(
-        "{:?} {:?} {:?} {:?}",
-        x_train.shape(),
-        t_train.shape(),
-        x_test.shape(),
-        t_test.shape()
-    );
-
-    let iters_num = 2000;
-    let train_size = x_train.shape()[0];
-    let batch_size = 100;
-    let learning_rate = 0.1;
-
-    // let mut network = TwoLayerNet::new(784, 50, 10, 0.01);
-    let mut network: TwoLayerNetN = TwoLayerNet::new(784, 50, 10, 0.1).into();
-
-    let mut rng = rand::rng();
-
-    for i in 0..iters_num {
-        let begin = std::time::Instant::now();
-        let idx = rand::seq::index::sample(&mut rng, train_size, batch_size).into_vec();
-
-        let x_batch = x_train.select(Axis(0), &idx);
-        let t_batch = t_train.select(Axis(0), &idx);
-        // println!("x= {x_batch} t= {t_batch}");
-
-        // let grad = network.numerical_gradient(&x_batch.view(), &t_batch);
-        let grad = network.gradient(&x_batch.view(), &t_batch);
-
-        // println!("w1: old= {} new= {}", grad_old.inner.w1, grad.inner.w1);
-
-        // let va = relative_eq!(grad_old.inner.w1, grad.inner.w1);
-        // if !va {
-        //     return;
-        // }
-
-        // let grad = grad.inner;
-        // let mut inner_network = network.inner.clone();
-        // // let mut inner_network = network.clone();
-        // // let mut inner_network = grad.inner.clone();
-        // inner_network.w1 = (inner_network.w1 - learning_rate * grad.w1);
-        // inner_network.b1 = (inner_network.b1 - learning_rate * grad.b1);
-        // inner_network.w2 = (inner_network.w2 - learning_rate * grad.w2);
-        // inner_network.b2 = (inner_network.b2 - learning_rate * grad.b2);
-        network = network.update(&grad.inner);
-
-        // let loss_inner = inner_network.loss(&x_batch.view(), &t_batch);
-
-        // network = inner_network.into();
-
-        let loss = network.loss(&x_batch.view(), &t_batch);
-        let elapsed = begin.elapsed();
-        println!("loss info: idx= {i} loss= {loss} elapsed= {elapsed:?}");
-    }
-
-    eframe::run_native(
-        "mnist",
-        eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-
-            Ok(Box::new(App {
-                network,
-                data: x_train,
-                labels: t_train,
-                idx: 0,
-            }))
-        }),
-    )
-    .unwrap();
-}
-
-struct App {
-    network: TwoLayerNetN,
-    data: Array2<f32>,
-    labels: Array2<f32>,
-    idx: usize,
-}
-
-impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let data_0_len = self.data.len_of(Axis(0));
-
-            ui.label(format!("current data row: {}", self.idx));
-
-            if ui.button("<---").clicked() {
-                self.idx = (self.idx + data_0_len - 1) % data_0_len;
-            }
-
-            let img_data = self
-                .data
-                .index_axis(Axis(0), self.idx)
-                .map(|a| (a * 255.0) as u8)
-                .to_vec();
-
-            let img_data_a = self.data.index_axis(Axis(0), self.idx);
-            let img_data_b = img_data_a.to_shape((1, img_data_a.len())).unwrap();
-
-            let result = self.network.predict(&img_data_b.view());
-            // let result = predict(&self.network, img_data_a).to_vec();
-
-            let image = ColorImage::from_gray([28, 28], &img_data);
-            let texture = ctx.load_texture("abc", image, egui::TextureOptions::default());
-
-            let img = Image::new(&texture).shrink_to_fit();
-            ui.add_sized([300.0, 300.0], img);
-
-            if ui.button("--->").clicked() {
-                self.idx = (self.idx + 1) % data_0_len;
-            }
-
-            let mut res: Vec<_> = (0..=9).into_iter().zip(result.into_iter()).collect();
-            res.sort_by(|a, b| b.1.total_cmp(&a.1));
-
-            let actual_label = self.labels.index_axis(Axis(0), self.idx);
-
-            ui.label(format!(
-                "actual label: {actual_label} predicted label: {res:?}"
-            ));
-        });
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::RwLock;
 
     use alg::math::{autodiff::numerical_gradient, stat::randn};
     use approx::assert_relative_eq;
-    use ndarray::arr1;
+    use ndarray::{arr1, array};
 
     use super::*;
 
@@ -610,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_two_layer_net() {
-        let mut net = TwoLayerNet::new(784, 100, 10, 0.01);
+        let mut net = TwoLayerNet::new(784, 100, 10, WeightGenerator::Std(0.01));
 
         let x = randn((100, 784));
         let t = randn((100, 10));

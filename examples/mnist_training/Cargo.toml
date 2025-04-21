@@ -9,6 +9,7 @@ ndarray = { workspace = true }
 openblas-src = { workspace = true }
 eframe = { workspace = true }
 egui = { workspace = true }
+egui_plot = { workspace = true }
 egui_extras = { workspace = true }
 image = { workspace = true }
 safetensors = { workspace = true }
