@@ -24,7 +24,10 @@ mod tests {
     fn test_rand() {
         let arr = randn((3, 4));
         assert_eq!(arr.shape(), &[3, 4]);
-        assert!(arr.iter().all(|&x| x >= 0.0 && x < 1.0));
+        println!("arr: {arr}");
+
+        let arr = randn((10, 1, 28, 28));
+        assert_eq!(arr.shape(), &[10, 1, 28, 28]);
         println!("arr: {arr}");
     }
 }
