@@ -1,6 +1,8 @@
 use std::{cmp::Ordering, ops::Sub};
 
-use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, NdFloat, RawData};
+use ndarray::{
+    Array, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Dimension, Ix1, NdFloat, RawData,
+};
 use num::traits::float::TotalOrder;
 pub mod autodiff;
 pub mod loss;
@@ -156,6 +158,17 @@ impl Relu for f32 {
     fn relu(&self) -> Self::Output {
         if self > &0.0 { *self } else { 0.0 }
     }
+}
+
+pub fn cos_similarity<T: NdFloat>(x: &ArrayView1<T>, y: &ArrayView1<T>) -> T {
+    let x_sum_sq = x.mapv(|a| a * a).sum().sqrt() + T::epsilon();
+    let y_sum_sq = y.mapv(|a| a * a).sum().sqrt() + T::epsilon();
+
+    let nx = x / x_sum_sq;
+    let ny = y / y_sum_sq;
+
+    let value = nx.dot(&ny);
+    value
 }
 
 #[cfg(test)]

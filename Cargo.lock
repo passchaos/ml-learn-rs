@@ -2551,6 +2551,11 @@ dependencies = [
 [[package]]
 name = "nlp_learn"
 version = "0.1.0"
+dependencies = [
+ "alg",
+ "ndarray",
+ "openblas-src",
+]
 
 [[package]]
 name = "nohash-hasher"
