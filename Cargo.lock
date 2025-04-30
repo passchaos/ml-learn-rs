@@ -2554,6 +2554,7 @@ version = "0.1.0"
 dependencies = [
  "alg",
  "ndarray",
+ "ndarray-linalg",
  "openblas-src",
 ]
 

@@ -1,8 +1,9 @@
 extern crate openblas_src;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, f32};
 
-use ndarray::{Array2, Axis};
+use ndarray::{Array, Array1, Array2, ArrayView2, Axis};
+use ndarray_linalg::SVD;
 
 fn preprocess(text: &str) -> (Vec<usize>, HashMap<String, usize>, HashMap<usize, String>) {
     let words = text.to_lowercase();
@@ -62,6 +63,59 @@ fn create_co_matrix(corpus: &[usize], vocab_size: usize, window_size: usize) -> 
     co_matrix
 }
 
+fn most_similar(
+    query: &str,
+    word_to_id: &HashMap<String, usize>,
+    id_to_word: &HashMap<usize, String>,
+    word_matrix: &Array2<usize>,
+) -> Array1<(String, f32)> {
+    let query_id = word_to_id[query];
+    let query_vec = word_matrix.index_axis(Axis(0), query_id);
+
+    let vocab_size = word_to_id.len();
+
+    let mut arr: Vec<_> = (0..vocab_size)
+        .into_iter()
+        .filter_map(|idx| {
+            if idx == query_id {
+                None
+            } else {
+                let word_id = idx;
+                let word_vec = word_matrix.index_axis(Axis(0), word_id);
+
+                let word = id_to_word[&word_id].clone();
+                let similarity = alg::math::cos_similarity(
+                    &query_vec.mapv(|a| a as f32).view(),
+                    &word_vec.mapv(|a| a as f32).view(),
+                );
+                Some((word, similarity))
+            }
+        })
+        .collect();
+    arr.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+    Array1::from_vec(arr)
+}
+
+fn ppmi(c: &ArrayView2<usize>) -> Array2<f32> {
+    let mut m = Array::<f32, _>::zeros(c.raw_dim());
+
+    let n = c.sum();
+    let s = c.sum_axis(Axis(0));
+
+    let (h, w) = (c.shape()[0], c.shape()[1]);
+
+    for i in 0..h {
+        for j in 0..w {
+            let pmi = ((c[(i, j)] * n) as f32 / ((s[i] * s[j]) as f32 + f32::EPSILON)).log2();
+
+            m[[i, j]] = pmi.max(0.0);
+        }
+    }
+
+    m
+}
+
 fn main() {
     let text = "You say goodbye and I say hello.";
     let (corpus, word_to_id, id_to_word) = preprocess(text);
@@ -73,5 +127,15 @@ fn main() {
 
     let simil =
         alg::math::cos_similarity(&c0.mapv(|a| a as f32).view(), &c1.mapv(|a| a as f32).view());
-    println!("co matrix: {co_matrix} simil= {simil}");
+    let ppmi = ppmi(&co_matrix.view());
+    println!("co matrix: {co_matrix} ppmi= {ppmi} simil= {simil}");
+
+    let res = most_similar("you", &word_to_id, &id_to_word, &co_matrix);
+    println!("most similar: res= {res:?}");
+
+    let (u, s, vt) = ppmi.svd(true, true).unwrap();
+
+    let u = u.unwrap();
+    let vt = vt.unwrap();
+    println!("u: {u} s: {s} vt: {vt}");
 }
