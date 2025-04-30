@@ -2,8 +2,9 @@ extern crate openblas_src;
 
 use std::{collections::HashMap, f32};
 
+use ndarray::s;
 use ndarray::{Array, Array1, Array2, ArrayView2, Axis};
-use ndarray_linalg::SVD;
+use ndarray_linalg::{SVD, TruncatedOrder, TruncatedSvd};
 
 fn preprocess(text: &str) -> (Vec<usize>, HashMap<String, usize>, HashMap<usize, String>) {
     let words = text.to_lowercase();
@@ -67,7 +68,7 @@ fn most_similar(
     query: &str,
     word_to_id: &HashMap<String, usize>,
     id_to_word: &HashMap<usize, String>,
-    word_matrix: &Array2<usize>,
+    word_matrix: &ArrayView2<f32>,
 ) -> Array1<(String, f32)> {
     let query_id = word_to_id[query];
     let query_vec = word_matrix.index_axis(Axis(0), query_id);
@@ -85,8 +86,8 @@ fn most_similar(
 
                 let word = id_to_word[&word_id].clone();
                 let similarity = alg::math::cos_similarity(
-                    &query_vec.mapv(|a| a as f32).view(),
-                    &word_vec.mapv(|a| a as f32).view(),
+                    &query_vec.mapv(|a| a).view(),
+                    &word_vec.mapv(|a| a).view(),
                 );
                 Some((word, similarity))
             }
@@ -94,10 +95,10 @@ fn most_similar(
         .collect();
     arr.sort_by(|a, b| b.1.total_cmp(&a.1));
 
-    Array1::from_vec(arr)
+    Array1::from_iter(arr.into_iter().take(5))
 }
 
-fn ppmi(c: &ArrayView2<usize>) -> Array2<f32> {
+fn ppmi(c: &ArrayView2<f32>) -> Array2<f32> {
     let mut m = Array::<f32, _>::zeros(c.raw_dim());
 
     let n = c.sum();
@@ -118,9 +119,18 @@ fn ppmi(c: &ArrayView2<usize>) -> Array2<f32> {
 
 fn main() {
     let text = "You say goodbye and I say hello.";
-    let (corpus, word_to_id, id_to_word) = preprocess(text);
 
-    let co_matrix = create_co_matrix(&corpus, word_to_id.len(), 1);
+    let path = std::env::home_dir()
+        .unwrap()
+        .join("Work/lstm/data/ptb.train.txt");
+    let f = std::fs::read_to_string(path).unwrap();
+
+    let f = f.replace('\n', "<eos>");
+
+    let (corpus, word_to_id, id_to_word) = preprocess(&f);
+    println!("word count: {}", word_to_id.len());
+
+    let co_matrix = create_co_matrix(&corpus, word_to_id.len(), 1).mapv(|a| a as f32);
 
     let c0 = co_matrix.index_axis(Axis(0), word_to_id["you"]);
     let c1 = co_matrix.index_axis(Axis(0), word_to_id["i"]);
@@ -130,12 +140,28 @@ fn main() {
     let ppmi = ppmi(&co_matrix.view());
     println!("co matrix: {co_matrix} ppmi= {ppmi} simil= {simil}");
 
-    let res = most_similar("you", &word_to_id, &id_to_word, &co_matrix);
+    let res = most_similar("you", &word_to_id, &id_to_word, &co_matrix.view());
     println!("most similar: res= {res:?}");
 
-    let (u, s, vt) = ppmi.svd(true, true).unwrap();
+    println!("c shape: {:?}", ppmi.shape());
 
-    let u = u.unwrap();
-    let vt = vt.unwrap();
+    let wordvec_size = 100;
+    let res = TruncatedSvd::new(ppmi, TruncatedOrder::Largest)
+        .decompose(wordvec_size)
+        .unwrap();
+
+    let (u, s, vt) = res.values_vectors();
+
+    let word_vecs = u.slice(s![.., ..wordvec_size]).to_owned();
+
+    for query in ["you", "year", "car", "toyota"] {
+        let res = most_similar(query, &word_to_id, &id_to_word, &word_vecs.view());
+        println!("res: {res:?}");
+    }
+
+    // let (u, s, vt) = ppmi.svd(true, true).unwrap();
+
+    // let u = u.unwrap();
+    // let vt = vt.unwrap();
     println!("u: {u} s: {s} vt: {vt}");
 }
