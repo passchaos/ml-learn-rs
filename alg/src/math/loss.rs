@@ -1,6 +1,5 @@
-use std::ops::Add;
 
-use ndarray::{Array, ArrayD, ArrayView, Dimension, NdFloat};
+use ndarray::{Array, Dimension, NdFloat};
 
 pub fn mean_squared_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) -> f32 {
     (y - t).mapv(|x| x.powi(2)).sum() / 2.0

@@ -447,7 +447,7 @@ fn main() {
     let ada_grad = AdaGrad::new(0.1);
 
     for weight_generator in &weight_generators {
-        let mut inner = TwoLayerNet::new(784, 50, 10, *weight_generator);
+        let inner = TwoLayerNet::new(784, 50, 10, *weight_generator);
 
         let network = TwoLayerNetN::new(inner.clone(), sgd.clone());
         let losses = train_action(
@@ -669,7 +669,7 @@ fn predict(network: &HashMap<String, Array2<f32>>, x: ArrayView1<f32>) -> Array1
 
 #[cfg(test)]
 mod tests {
-    use std::sync::RwLock;
+    
 
     use alg::math::{autodiff::numerical_gradient, stat::randn};
     use approx::assert_relative_eq;

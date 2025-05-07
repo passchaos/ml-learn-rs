@@ -4,7 +4,6 @@ use std::{
 };
 
 use ndarray::{Array, Dimension, NdIndex};
-use rand::TryRngCore;
 
 pub fn numerical_diff<T: Sub<Output = T> + Add<Output = T> + Div<Output = T> + Copy>(
     f: fn(T) -> T,

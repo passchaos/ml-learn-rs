@@ -7,9 +7,9 @@ pub mod softmax_loss;
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Array1, ArrayView, array};
+    use ndarray::array;
 
-    use crate::math::{Relu, autodiff::numerical_gradient};
+    
 
     use super::{add::AddLayer, mul::MulLayer, relu::ReluLayer};
 
@@ -23,7 +23,7 @@ mod tests {
 
         let mut mul_apple_layer = MulLayer::default();
         let mut mul_orange_layer = MulLayer::default();
-        let mut add_apple_orange_layer = AddLayer::default();
+        let add_apple_orange_layer = AddLayer::default();
         let mut mul_tax_layer = MulLayer::default();
 
         let apple_price = mul_apple_layer.forward(apple, apple_num);
@@ -46,7 +46,7 @@ mod tests {
     #[test]
     fn test_relu() {
         let mut layer = ReluLayer::default();
-        let mut x = array![-4, 1, 2, 3];
+        let x = array![-4, 1, 2, 3];
         let res = layer.forward(&x.view());
 
         println!("layer: {layer:?}");

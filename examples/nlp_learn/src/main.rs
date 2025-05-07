@@ -4,7 +4,7 @@ use std::{collections::HashMap, f32};
 
 use ndarray::s;
 use ndarray::{Array, Array1, Array2, ArrayView2, Axis};
-use ndarray_linalg::{SVD, TruncatedOrder, TruncatedSvd};
+use ndarray_linalg::{TruncatedOrder, TruncatedSvd};
 
 fn preprocess(text: &str) -> (Vec<usize>, HashMap<String, usize>, HashMap<usize, String>) {
     let words = text.to_lowercase();

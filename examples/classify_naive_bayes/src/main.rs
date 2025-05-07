@@ -46,7 +46,7 @@ fn main() {
     let mut traing_set: Vec<_> = (0..50).collect();
     let mut test_set = vec![];
     for _ in 0..10 {
-        let rand_idx = rand::thread_rng().gen_range(0..traing_set.len());
+        let rand_idx = rand::rng().random_range(0..traing_set.len());
 
         test_set.push(traing_set[rand_idx]);
         traing_set.remove(rand_idx);

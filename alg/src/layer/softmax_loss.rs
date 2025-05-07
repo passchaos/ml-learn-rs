@@ -1,4 +1,4 @@
-use ndarray::{Array, Array2, Dimension, NdFloat};
+use ndarray::{Array, Dimension, NdFloat};
 
 use crate::math::{Softmax, loss::cross_entropy_error};
 

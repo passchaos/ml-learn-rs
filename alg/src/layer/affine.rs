@@ -1,5 +1,5 @@
 use ndarray::{
-    Array, Array1, Array2, ArrayView, ArrayView2, Axis, Dimension, LinalgScalar, linalg::Dot,
+    Array1, Array2, ArrayView2, Axis, LinalgScalar, linalg::Dot,
 };
 
 pub struct AffineLayer<T> {
