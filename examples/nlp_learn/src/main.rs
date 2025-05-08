@@ -98,6 +98,8 @@ fn most_similar(
     Array1::from_iter(arr.into_iter().take(5))
 }
 
+// PPMI
+// PPMI(C) = max(0, log2(C / (Cx * Cy)))
 fn ppmi(c: &ArrayView2<f32>) -> Array2<f32> {
     let mut m = Array::<f32, _>::zeros(c.raw_dim());
 
