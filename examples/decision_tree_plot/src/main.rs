@@ -95,6 +95,8 @@ impl DecisionTreePlot {
                         );
 
                         ui.add_sized([1000.0, 1000.0], image);
+                        // ui.image(source)
+                        // ui.add(image)
                         // ui.add(image);
                     }
                     Err(e) => {
