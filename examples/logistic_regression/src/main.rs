@@ -184,7 +184,7 @@ impl eframe::App for IterationState {
                     .show(ui, |plot_ui| {
                         let points = PlotPoints::new(x0_iteration);
 
-                        plot_ui.points(Points::new(points));
+                        plot_ui.points(Points::new("x0", points));
                     });
             });
 
@@ -194,7 +194,7 @@ impl eframe::App for IterationState {
                     .show(ui, |plot_ui| {
                         let points = PlotPoints::new(x1_iteration);
 
-                        plot_ui.points(Points::new(points));
+                        plot_ui.points(Points::new("x1", points));
                     });
             });
 
@@ -204,7 +204,7 @@ impl eframe::App for IterationState {
                     .show(ui, |plot_ui| {
                         let points = PlotPoints::new(x2_iteration);
 
-                        plot_ui.points(Points::new(points));
+                        plot_ui.points(Points::new("x2", points));
                     })
             });
         });
@@ -240,7 +240,7 @@ impl eframe::App for App {
                             })
                             .collect();
 
-                        let line = egui_plot::Line::new(PlotPoints::from(line_data))
+                        let line = egui_plot::Line::new("label", PlotPoints::from(line_data))
                             .name(format!("{label}"))
                             .color(color.clone());
                         plot_ui.line(line);
@@ -252,7 +252,7 @@ impl eframe::App for App {
                         let radius = if label == 1.0 { 2.0 } else { 5.0 };
 
                         plot_ui.points(
-                            Points::new(points)
+                            Points::new("label", points)
                                 .radius(radius)
                                 .color(egui::Color32::LIGHT_RED),
                         );

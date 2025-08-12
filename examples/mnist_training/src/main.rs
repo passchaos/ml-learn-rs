@@ -521,7 +521,7 @@ impl eframe::App for LossApp {
                             let points = PlotPoints::from_iter(points);
 
                             plot_ui.points(
-                                Points::new(points)
+                                Points::new("optim", points)
                                     .name(format!("{optim_name}_{weight_generator}")),
                             );
                         }
@@ -669,7 +669,6 @@ fn predict(network: &HashMap<String, Array2<f32>>, x: ArrayView1<f32>) -> Array1
 
 #[cfg(test)]
 mod tests {
-    
 
     use alg::math::{autodiff::numerical_gradient, stat::randn};
     use approx::assert_relative_eq;

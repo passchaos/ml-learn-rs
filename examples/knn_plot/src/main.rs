@@ -127,7 +127,7 @@ impl UiState {
                         };
 
                         plot_ui.points(
-                            Points::new(sine_points)
+                            Points::new("sine", sine_points)
                                 .name(label)
                                 .radius(radius)
                                 .color(color),
