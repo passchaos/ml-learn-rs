@@ -1,7 +1,6 @@
+use std::ops::Mul;
 
-use ndarray::{
-    Array, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Dimension, NdFloat,
-};
+use ndarray::{Array, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Dimension, NdFloat};
 use num::traits::float::TotalOrder;
 pub mod autodiff;
 pub mod loss;
@@ -159,9 +158,19 @@ impl Relu for f32 {
     }
 }
 
+pub trait L2Norm<Output> {
+    fn l2_norm(&self) -> Output;
+}
+
+impl<'a, T: NdFloat> L2Norm<T> for ArrayView1<'a, T> {
+    fn l2_norm(&self) -> T {
+        self.pow2().sum().sqrt()
+    }
+}
+
 pub fn cos_similarity<T: NdFloat>(x: &ArrayView1<T>, y: &ArrayView1<T>) -> T {
-    let x_sum_sq = x.mapv(|a| a * a).sum().sqrt() + T::epsilon();
-    let y_sum_sq = y.mapv(|a| a * a).sum().sqrt() + T::epsilon();
+    let x_sum_sq = x.l2_norm() + T::epsilon();
+    let y_sum_sq = y.l2_norm() + T::epsilon();
 
     let nx = x / x_sum_sq;
     let ny = y / y_sum_sq;

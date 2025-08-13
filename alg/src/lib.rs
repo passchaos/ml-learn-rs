@@ -6,6 +6,7 @@ pub mod layer;
 pub mod logistic;
 pub mod math;
 pub mod neural_network;
+pub mod nlp;
 pub mod tensor;
 pub mod util;
 

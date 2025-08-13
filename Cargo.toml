@@ -29,6 +29,7 @@ byteorder = "*"
 image = "*"
 safetensors = "*"
 memmap2 = "*"
+# burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 
 # [profile.dev.package."*"]
 # opt-level = 3
