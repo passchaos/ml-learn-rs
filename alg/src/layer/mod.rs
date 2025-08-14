@@ -1,5 +1,6 @@
 pub mod add;
 pub mod affine;
+pub mod matmul;
 pub mod mul;
 pub mod relu;
 pub mod sigmoid;
@@ -8,8 +9,6 @@ pub mod softmax_loss;
 #[cfg(test)]
 mod tests {
     use ndarray::array;
-
-    
 
     use super::{add::AddLayer, mul::MulLayer, relu::ReluLayer};
 

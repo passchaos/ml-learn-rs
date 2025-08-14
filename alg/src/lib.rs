@@ -7,8 +7,12 @@ pub mod logistic;
 pub mod math;
 pub mod neural_network;
 pub mod nlp;
+pub mod optimizer;
 pub mod tensor;
+pub mod train;
 pub mod util;
+
+type Mat<T> = ndarray::Array2<T>;
 
 #[cfg(test)]
 mod tests {
