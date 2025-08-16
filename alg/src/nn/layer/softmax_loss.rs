@@ -1,27 +1,28 @@
 use ndarray::{Array, Dimension, NdFloat};
 
-use crate::math::{Softmax, loss::cross_entropy_error};
+use crate::{
+    math::{Softmax, loss::cross_entropy_error},
+    nn::{Float, Mat},
+};
 
 #[derive(Default)]
-pub struct SoftmaxWithLossLayer<T, D> {
-    y: Option<Array<T, D>>,
-    t: Option<Array<T, D>>,
+pub struct SoftmaxWithLoss {
+    y: Option<Mat>,
+    t: Option<Mat>,
 }
 
-impl<T: Clone + NdFloat + From<f32>, D: Dimension> SoftmaxWithLossLayer<T, D> {
-    pub fn forward(&mut self, x: &Array<T, D>, t: &Array<T, D>) -> T
-    where
-        Array<T, D>: Softmax<Output = Array<T, D>>,
-    {
+impl SoftmaxWithLoss {
+    fn forward(&mut self, x: &Mat, t: &Mat) -> Float {
         self.t = Some(t.clone());
+
         let y = x.softmax();
         self.y = Some(y.clone());
 
-        cross_entropy_error(y, t.to_owned())
+        cross_entropy_error(y, t.clone())
     }
 
-    pub fn backward(&self) -> Array<T, D> {
-        let batch_size: T = (self.t.as_ref().unwrap().shape()[0] as f32).into();
+    fn backward(&mut self) -> Mat {
+        let batch_size = self.t.as_ref().unwrap().shape()[0] as Float;
 
         let dx = (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()) / batch_size;
 
@@ -41,7 +42,7 @@ mod tests {
         let y = array![[0.1, 0.05, 0.6, 0.0, 0.05, 0.1, 0.0, 0.1, 0.0, 0.0]];
         let t = array![[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
 
-        let mut layer = SoftmaxWithLossLayer::default();
+        let mut layer = SoftmaxWithLoss::default();
         let loss = layer.forward(&y, &t);
         let dx = layer.backward();
 
@@ -75,7 +76,7 @@ mod tests {
             [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
         ];
 
-        let mut layer = SoftmaxWithLossLayer::default();
+        let mut layer = SoftmaxWithLoss::default();
         let loss = layer.forward(&y, &t);
         let dx = layer.backward();
 

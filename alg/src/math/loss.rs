@@ -1,4 +1,3 @@
-
 use ndarray::{Array, Dimension, NdFloat};
 
 pub fn mean_squared_error<D: Dimension>(y: &Array<f32, D>, t: &Array<f32, D>) -> f32 {

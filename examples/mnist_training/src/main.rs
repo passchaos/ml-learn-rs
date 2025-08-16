@@ -11,113 +11,12 @@ use alg::{
         DigitalRecognition, Relu, Sigmoid, Softmax, autodiff::numerical_gradient,
         loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
     },
+    nn::layer::{linear::Linear, softmax_loss::SoftmaxWithLoss},
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2};
-
-trait SimpleOptimizer: Debug {
-    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet);
-}
-
-#[derive(Clone, Debug)]
-struct Sgd {
-    lr: f32,
-}
-
-impl SimpleOptimizer for Sgd {
-    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
-        net.w1 = &net.w1 - self.lr * &grads.w1;
-        net.b1 = &net.b1 - self.lr * &grads.b1;
-        net.w2 = &net.w2 - self.lr * &grads.w2;
-        net.b2 = &net.b2 - self.lr * &grads.b2;
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Momentum {
-    lr: f32,
-    momentum: f32,
-    v: Option<TwoLayerNet>,
-}
-
-impl SimpleOptimizer for Momentum {
-    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
-        if self.v.is_none() {
-            let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
-            let b1 = Array1::zeros(net.b1.raw_dim());
-            let w2 = Array2::zeros(net.w2.raw_dim());
-            let b2 = Array1::zeros(net.b2.raw_dim());
-
-            self.v = Some(TwoLayerNet { w1, b1, w2, b2 });
-        }
-
-        let v = self.v.as_mut().unwrap();
-
-        v.w1 = self.momentum * &v.w1 - self.lr * &grads.w1;
-        v.b1 = self.momentum * &v.b1 - self.lr * &grads.b1;
-        v.w2 = self.momentum * &v.w2 - self.lr * &grads.w2;
-        v.b2 = self.momentum * &v.b2 - self.lr * &grads.b2;
-
-        net.w1 = &net.w1 + &v.w1;
-        net.b1 = &net.b1 + &v.b1;
-        net.w2 = &net.w2 + &v.w2;
-        net.b2 = &net.b2 + &v.b2;
-    }
-}
-
-impl Momentum {
-    fn new(lr: f32, momentum: f32) -> Self {
-        Self {
-            lr,
-            momentum,
-            v: None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct AdaGrad {
-    lr: f32,
-    v: Option<TwoLayerNet>,
-}
-
-impl SimpleOptimizer for AdaGrad {
-    fn update(&mut self, net: &mut TwoLayerNet, grads: &TwoLayerNet) {
-        if self.v.is_none() {
-            let w1 = Array2::<f32>::zeros(net.w1.raw_dim());
-            let b1 = Array1::zeros(net.b1.raw_dim());
-            let w2 = Array2::zeros(net.w2.raw_dim());
-            let b2 = Array1::zeros(net.b2.raw_dim());
-
-            self.v = Some(TwoLayerNet { w1, b1, w2, b2 });
-        }
-
-        let v = self.v.as_mut().unwrap();
-
-        v.w1 = &v.w1 + &grads.w1 * &grads.w1;
-        v.b1 = &v.b1 + &grads.b1 * &grads.b1;
-        v.w2 = &v.w2 + &grads.w2 * &grads.w2;
-        v.b2 = &v.b2 + &grads.b2 * &grads.b2;
-
-        let w1_a = &grads.w1 / (v.w1.sqrt() + 1e-7);
-        let b1_a = &grads.b1 / (v.b1.sqrt() + 1e-7);
-        let w2_a = &grads.w2 / (v.w2.sqrt() + 1e-7);
-        let b2_a = &grads.b2 / (v.b2.sqrt() + 1e-7);
-
-        net.w1 = &net.w1 - self.lr * w1_a;
-        net.b1 = &net.b1 - self.lr * b1_a;
-        net.w2 = &net.w2 - self.lr * w2_a;
-        net.b2 = &net.b2 - self.lr * b2_a;
-    }
-}
-
-impl AdaGrad {
-    fn new(lr: f32) -> Self {
-        Self { lr, v: None }
-    }
-}
 
 struct Layers {
     affine1_layer: AffineLayer<f32>,
@@ -221,6 +120,12 @@ enum WeightGenerator {
     Std(f32),
     Xavier,
     He,
+}
+
+struct Model {
+    lin1: Linear,
+    lin2: Linear,
+    out: SoftmaxWithLoss,
 }
 
 #[derive(Clone, Debug)]
