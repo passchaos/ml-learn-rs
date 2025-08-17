@@ -29,19 +29,19 @@ impl Linear {
         enable_bias: bool,
     ) -> Self {
         let weight = match weight_init {
-            WeightInit::Std(std) => randn((output_size, input_size)) * std,
+            WeightInit::Std(std) => randn((input_size, output_size)) * std,
             WeightInit::Xavier => {
                 let scale = (6.0 / (input_size + output_size) as Float).sqrt();
-                randn((output_size, input_size)) * scale
+                randn((input_size, output_size)) * scale
             }
             WeightInit::He => {
                 let scale = (2.0 / input_size as Float).sqrt();
-                randn((output_size, input_size)) * scale
+                randn((input_size, output_size)) * scale
             }
         };
 
         let bias = if enable_bias {
-            Some(Mat::zeros((output_size, 1)))
+            Some(Mat::zeros((1, output_size)))
         } else {
             None
         };
@@ -61,9 +61,9 @@ impl LayerWard for Linear {
         self.x = Some(input.clone());
 
         if let Some(bias) = &self.bias {
-            self.weight.dot(input) + bias
+            input.dot(&self.weight) + bias
         } else {
-            self.weight.dot(input)
+            input.dot(&self.weight)
         }
     }
 

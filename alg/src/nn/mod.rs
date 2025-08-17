@@ -1,4 +1,4 @@
-type Float = f64;
+type Float = f32;
 type Mat<T = Float> = ndarray::Array2<T>;
 type Mat1<T = Float> = ndarray::Array1<T>;
 pub fn float_epsilon() -> Float {
