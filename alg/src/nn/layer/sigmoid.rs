@@ -1,12 +1,12 @@
 use num::Float;
 
-use crate::nn::{Mat, layer::Layer};
+use crate::nn::{Mat, layer::LayerWard};
 
 pub struct Sigmoid {
     out: Option<Mat>,
 }
 
-impl Layer for Sigmoid {
+impl LayerWard for Sigmoid {
     fn forward(&mut self, input: &Mat) -> Mat {
         let out = input.mapv(|a| 1.0 / (1.0 + (-a).exp()));
 
@@ -15,7 +15,7 @@ impl Layer for Sigmoid {
         out
     }
 
-    fn backward<O: crate::nn::optimizer::Optimizer>(&mut self, grad: &Mat, opt: &mut O) -> Mat {
+    fn backward(&mut self, grad: &Mat) -> Mat {
         let mut dx = grad.clone();
 
         for (idx, item) in dx.indexed_iter_mut() {

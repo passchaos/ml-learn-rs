@@ -10,12 +10,12 @@ pub mod stat;
 
 pub struct DigitalRecognition;
 
-pub trait Max {
+pub trait MaxOpT {
     type Output;
     fn max_val(&self) -> &Self::Output;
 }
 
-impl<T: TotalOrder, S: Data<Elem = T>, D: Dimension> Max for ArrayBase<S, D> {
+impl<T: TotalOrder, S: Data<Elem = T>, D: Dimension> MaxOpT for ArrayBase<S, D> {
     type Output = T;
 
     fn max_val(&self) -> &Self::Output {
@@ -23,12 +23,12 @@ impl<T: TotalOrder, S: Data<Elem = T>, D: Dimension> Max for ArrayBase<S, D> {
     }
 }
 
-pub trait Softmax {
+pub trait SoftmaxOpT {
     type Output;
     fn softmax(&self) -> Self::Output;
 }
 
-impl<T: NdFloat + TotalOrder> Softmax for Array1<T> {
+impl<T: NdFloat + TotalOrder> SoftmaxOpT for Array1<T> {
     type Output = Array1<T>;
 
     fn softmax(&self) -> Self::Output {
@@ -42,7 +42,7 @@ impl<T: NdFloat + TotalOrder> Softmax for Array1<T> {
     }
 }
 
-impl<T: NdFloat + TotalOrder> Softmax for Array2<T> {
+impl<T: NdFloat + TotalOrder> SoftmaxOpT for Array2<T> {
     type Output = Array2<T>;
 
     fn softmax(&self) -> Self::Output {
@@ -68,12 +68,12 @@ impl<T: NdFloat + TotalOrder> Softmax for Array2<T> {
     }
 }
 
-pub trait Sigmoid {
+pub trait SigmoidOpT {
     type Output;
     fn sigmoid(&self) -> Self::Output;
 }
 
-impl<D: Dimension> Sigmoid for Array<f64, D> {
+impl<D: Dimension> SigmoidOpT for Array<f64, D> {
     type Output = Array<f64, D>;
 
     fn sigmoid(&self) -> Self::Output {
@@ -81,7 +81,7 @@ impl<D: Dimension> Sigmoid for Array<f64, D> {
     }
 }
 
-impl Sigmoid for f64 {
+impl SigmoidOpT for f64 {
     type Output = f64;
 
     fn sigmoid(&self) -> Self::Output {
@@ -89,7 +89,7 @@ impl Sigmoid for f64 {
     }
 }
 
-impl<D: Dimension> Sigmoid for Array<f32, D> {
+impl<D: Dimension> SigmoidOpT for Array<f32, D> {
     type Output = Array<f32, D>;
 
     fn sigmoid(&self) -> Self::Output {
@@ -97,7 +97,7 @@ impl<D: Dimension> Sigmoid for Array<f32, D> {
     }
 }
 
-impl Sigmoid for f32 {
+impl SigmoidOpT for f32 {
     type Output = f32;
 
     fn sigmoid(&self) -> Self::Output {
@@ -105,12 +105,12 @@ impl Sigmoid for f32 {
     }
 }
 
-pub trait Relu {
+pub trait ReluOpT {
     type Output;
     fn relu(&self) -> Self::Output;
 }
 
-impl<D: Dimension> Relu for Array<f64, D> {
+impl<D: Dimension> ReluOpT for Array<f64, D> {
     type Output = Array<f64, D>;
 
     fn relu(&self) -> Self::Output {
@@ -126,7 +126,7 @@ impl<D: Dimension> Relu for Array<f64, D> {
     }
 }
 
-impl Relu for f64 {
+impl ReluOpT for f64 {
     type Output = f64;
 
     fn relu(&self) -> Self::Output {
@@ -134,7 +134,7 @@ impl Relu for f64 {
     }
 }
 
-impl<D: Dimension> Relu for Array<f32, D> {
+impl<D: Dimension> ReluOpT for Array<f32, D> {
     type Output = Array<f32, D>;
 
     fn relu(&self) -> Self::Output {
@@ -150,7 +150,7 @@ impl<D: Dimension> Relu for Array<f32, D> {
     }
 }
 
-impl Relu for f32 {
+impl ReluOpT for f32 {
     type Output = f32;
 
     fn relu(&self) -> Self::Output {
@@ -158,11 +158,11 @@ impl Relu for f32 {
     }
 }
 
-pub trait L2Norm<Output> {
+pub trait L2NormOpT<Output> {
     fn l2_norm(&self) -> Output;
 }
 
-impl<'a, T: NdFloat> L2Norm<T> for ArrayView1<'a, T> {
+impl<'a, T: NdFloat> L2NormOpT<T> for ArrayView1<'a, T> {
     fn l2_norm(&self) -> T {
         self.pow2().sum().sqrt()
     }

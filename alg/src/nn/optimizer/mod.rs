@@ -5,7 +5,7 @@ pub trait Optimizer {
     fn step(&mut self, param: &mut Mat, grad: &Mat);
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Sgd {
     lr: Float,
 }
@@ -22,7 +22,7 @@ impl Optimizer for Sgd {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Momentum {
     lr: Float,
     momentum: Float,
@@ -56,7 +56,7 @@ impl Optimizer for Momentum {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AdaGrad {
     lr: Float,
     h: Option<Mat>,
@@ -88,7 +88,7 @@ impl Optimizer for AdaGrad {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RMSprop {
     lr: Float,
     decay_rate: Float,
@@ -127,6 +127,7 @@ impl Optimizer for RMSprop {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Adam {
     lr: Float,
     beta1: Float,

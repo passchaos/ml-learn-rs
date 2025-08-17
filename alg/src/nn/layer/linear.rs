@@ -2,21 +2,46 @@ use ndarray::Axis;
 
 use crate::{
     math::stat::randn,
-    nn::{Mat, Mat1, layer::Layer, optimizer::Optimizer},
+    nn::{Float, Mat, layer::LayerWard, optimizer::Optimizer},
 };
+
+pub enum WeightInit {
+    Std(Float),
+    Xavier,
+    He,
+}
 
 pub struct Linear {
     weight: Mat,
     bias: Option<Mat>,
+    weight_opt: Box<dyn Optimizer>,
+    bias_opt: Option<Box<dyn Optimizer>>,
     x: Option<Mat>,
 }
 
 impl Linear {
-    pub fn new(input_dim: usize, output_dim: usize, enable_bias: bool) -> Self {
-        let weight = randn((output_dim, input_dim));
+    pub fn new(
+        weight_init: WeightInit,
+        input_size: usize,
+        output_size: usize,
+        weight_opt: Box<dyn Optimizer>,
+        bias_opt: Option<Box<dyn Optimizer>>,
+        enable_bias: bool,
+    ) -> Self {
+        let weight = match weight_init {
+            WeightInit::Std(std) => randn((output_size, input_size)) * std,
+            WeightInit::Xavier => {
+                let scale = (6.0 / (input_size + output_size) as Float).sqrt();
+                randn((output_size, input_size)) * scale
+            }
+            WeightInit::He => {
+                let scale = (2.0 / input_size as Float).sqrt();
+                randn((output_size, input_size)) * scale
+            }
+        };
 
         let bias = if enable_bias {
-            Some(Mat::zeros((output_dim, 1)))
+            Some(Mat::zeros((output_size, 1)))
         } else {
             None
         };
@@ -24,12 +49,14 @@ impl Linear {
         Self {
             weight,
             bias,
+            weight_opt,
+            bias_opt,
             x: None,
         }
     }
 }
 
-impl Layer for Linear {
+impl LayerWard for Linear {
     fn forward(&mut self, input: &Mat) -> Mat {
         self.x = Some(input.clone());
 
@@ -40,15 +67,16 @@ impl Layer for Linear {
         }
     }
 
-    fn backward<O: Optimizer>(&mut self, grad: &Mat, opt: &mut O) -> Mat {
+    fn backward(&mut self, grad: &Mat) -> Mat {
         let dx = grad.dot(&self.weight.t());
 
         let dw = self.x.as_ref().unwrap().t().dot(grad);
-        opt.step(&mut self.weight, &dw);
+
+        self.weight_opt.step(&mut self.weight, &dw);
 
         if let Some(bias) = self.bias.as_mut() {
             let db = grad.sum_axis(Axis(0)).insert_axis(Axis(0));
-            opt.step(bias, &db);
+            self.bias_opt.as_mut().unwrap().step(bias, &db);
         }
 
         dx

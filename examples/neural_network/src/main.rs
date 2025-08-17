@@ -2,7 +2,7 @@ extern crate openblas_src;
 
 use std::collections::HashMap;
 
-use alg::math::Sigmoid;
+use alg::math::SigmoidOpT;
 use ndarray::{Array2, array};
 
 fn init_network() -> HashMap<String, Array2<f32>> {

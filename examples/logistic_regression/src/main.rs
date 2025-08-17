@@ -2,7 +2,7 @@ extern crate openblas_src;
 
 use std::{collections::HashMap, io::BufRead};
 
-use alg::math::Sigmoid;
+use alg::math::SigmoidOpT;
 use anyhow::Result;
 use egui::vec2;
 use egui_plot::{Legend, PlotPoints, Points};

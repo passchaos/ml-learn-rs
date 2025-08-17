@@ -1,11 +1,11 @@
-use crate::nn::{Mat, layer::Layer};
+use crate::nn::{Mat, layer::LayerWard};
 
 #[derive(Default)]
 pub struct Relu {
     mask: Option<Mat<bool>>,
 }
 
-impl Layer for Relu {
+impl LayerWard for Relu {
     fn forward(&mut self, x: &Mat) -> Mat {
         self.mask = Some(x.mapv(|a| a <= 0.0));
 
@@ -14,7 +14,7 @@ impl Layer for Relu {
         out
     }
 
-    fn backward<O: crate::nn::optimizer::Optimizer>(&mut self, grad: &Mat, opt: &mut O) -> Mat {
+    fn backward(&mut self, grad: &Mat) -> Mat {
         let mut out = grad.clone();
 
         for (idx, a) in out.indexed_iter_mut() {

@@ -6,126 +6,80 @@ use std::{
 };
 
 use alg::{
-    layer::{affine::AffineLayer, relu::ReluLayer, softmax_loss::SoftmaxWithLossLayer},
     math::{
-        DigitalRecognition, Relu, Sigmoid, Softmax, autodiff::numerical_gradient,
+        DigitalRecognition, ReluOpT, SigmoidOpT, SoftmaxOpT, autodiff::numerical_gradient,
         loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
     },
-    nn::layer::{linear::Linear, softmax_loss::SoftmaxWithLoss},
+    nn::{
+        layer::{
+            Layer, LayerWard,
+            linear::{Linear, WeightInit},
+            relu::Relu,
+            softmax_loss::SoftmaxWithLoss,
+        },
+        optimizer::{Optimizer, Sgd},
+    },
     tensor::safetensors::Load,
 };
 use egui::{ColorImage, Image};
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2};
 
-struct Layers {
-    affine1_layer: AffineLayer<f32>,
-    relu1_layer: ReluLayer<Ix2>,
-    affine2_layer: AffineLayer<f32>,
-    last_layer: SoftmaxWithLossLayer<f32, Ix2>,
-}
-
-impl Layers {
-    fn new(inner: &TwoLayerNet) -> Self {
-        let affine1_layer = AffineLayer::new(inner.w1.clone(), inner.b1.clone());
-        let relu1_layer = ReluLayer::default();
-        let affine2_layer = AffineLayer::new(inner.w2.clone(), inner.b2.clone());
-        let last_layer = SoftmaxWithLossLayer::default();
-
-        Self {
-            affine1_layer,
-            relu1_layer,
-            affine2_layer,
-            last_layer,
-        }
-    }
-
-    fn predict(&mut self, x: &ArrayView2<f32>) -> Array2<f32> {
-        let a1 = self.affine1_layer.forward(x);
-        let z1 = self.relu1_layer.forward(&a1.view());
-        let a2 = self.affine2_layer.forward(&z1.view());
-
-        a2
-    }
-
-    fn loss(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
-        let y = self.predict(x);
-        self.last_layer.forward(&y, t)
-    }
-
-    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
-        self.loss(x, t);
-
-        let dout = self.last_layer.backward();
-        let (dout2, dw2, db2) = self.affine2_layer.backward(&dout.view());
-        let dout = self.relu1_layer.backward(&dout2.view());
-        let (dout1, dw1, db1) = self.affine1_layer.backward(&dout.view());
-
-        let inner = TwoLayerNet {
-            w1: dw1,
-            b1: db1,
-            w2: dw2,
-            b2: db2,
-        };
-
-        inner
-    }
-}
-
-struct TwoLayerNetN<S> {
-    inner: TwoLayerNet,
-    layers: Layers,
-    optim: S,
-}
-
-impl<S> TwoLayerNetN<S> {
-    fn new(inner: TwoLayerNet, optim: S) -> Self {
-        let layers = Layers::new(&inner);
-
-        Self {
-            inner,
-            layers,
-            optim,
-        }
-    }
-
-    fn predict(&mut self, x: &ArrayView2<f32>) -> Array2<f32> {
-        self.layers.predict(x)
-    }
-
-    fn loss(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
-        self.layers.loss(x, t)
-    }
-
-    fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
-        self.inner.numerical_gradient(x, t)
-    }
-
-    fn gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> TwoLayerNet {
-        self.layers.gradient(x, t)
-    }
-}
-
-impl<S: SimpleOptimizer> TwoLayerNetN<S> {
-    fn update(&mut self, grad: &TwoLayerNet) {
-        // 因为inner网络发生了更新，所以需要重新生成计算图
-        self.optim.update(&mut self.inner, grad);
-
-        self.layers = Layers::new(&self.inner);
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-enum WeightGenerator {
-    Std(f32),
-    Xavier,
-    He,
-}
-
 struct Model {
-    lin1: Linear,
-    lin2: Linear,
+    layers: Vec<Layer>,
     out: SoftmaxWithLoss,
+}
+
+impl Model {
+    fn new(input_size: usize, hidden_size: usize, output_size: usize) -> Self {
+        let w_opt = Sgd::new(0.1);
+        let b_opt = Sgd::new(0.1);
+
+        let lin1 = Linear::new(
+            WeightInit::He,
+            input_size,
+            hidden_size,
+            Box::new(w_opt.clone()),
+            Some(Box::new(b_opt.clone())),
+            true,
+        );
+        let lin2 = Linear::new(
+            WeightInit::Std(0.01),
+            hidden_size,
+            output_size,
+            Box::new(w_opt),
+            Some(Box::new(b_opt)),
+            true,
+        );
+        let relu = Relu::default();
+
+        let layers = vec![Layer::Linear(lin1), Layer::Relu(relu), Layer::Linear(lin2)];
+        let out = SoftmaxWithLoss::default();
+
+        Self { layers, out }
+    }
+
+    fn predict(&mut self, x: &Array2<f64>) -> Array2<f64> {
+        let mut x = x.clone();
+        for layer in &mut self.layers {
+            x = layer.forward(&x);
+        }
+
+        x
+    }
+
+    fn loss(&mut self, x: &Array2<f64>, t: &Array2<f64>) -> f64 {
+        let y = self.predict(x);
+        self.out.forward(&y, t)
+    }
+
+    fn backward(&mut self, x: &Array2<f64>, t: &Array2<f64>) {
+        let mut dout = self.out.backward();
+
+        for layer in self.layers.iter_mut().rev() {
+            dout = layer.backward(&dout);
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

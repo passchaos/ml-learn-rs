@@ -1,7 +1,7 @@
 use ndarray::{Array1, ArrayView1, ArrayView2, Axis};
 use rand::{distr::Uniform, prelude::Distribution};
 
-use crate::math::Sigmoid;
+use crate::math::SigmoidOpT;
 
 pub fn gradient_ascent(
     data_in: ArrayView2<f64>,

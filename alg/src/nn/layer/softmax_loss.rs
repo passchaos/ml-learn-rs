@@ -1,7 +1,7 @@
 use ndarray::{Array, Dimension, NdFloat};
 
 use crate::{
-    math::{Softmax, loss::cross_entropy_error},
+    math::{SoftmaxOpT, loss::cross_entropy_error},
     nn::{Float, Mat},
 };
 
@@ -12,7 +12,7 @@ pub struct SoftmaxWithLoss {
 }
 
 impl SoftmaxWithLoss {
-    fn forward(&mut self, x: &Mat, t: &Mat) -> Float {
+    pub fn forward(&mut self, x: &Mat, t: &Mat) -> Float {
         self.t = Some(t.clone());
 
         let y = x.softmax();
@@ -21,7 +21,7 @@ impl SoftmaxWithLoss {
         cross_entropy_error(y, t.clone())
     }
 
-    fn backward(&mut self) -> Mat {
+    pub fn backward(&mut self) -> Mat {
         let batch_size = self.t.as_ref().unwrap().shape()[0] as Float;
 
         let dx = (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()) / batch_size;
