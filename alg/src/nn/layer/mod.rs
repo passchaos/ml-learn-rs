@@ -1,5 +1,6 @@
 use crate::nn::{Mat, optimizer::Optimizer};
 
+pub mod batch_norm;
 pub mod linear;
 pub mod relu;
 pub mod sigmoid;
