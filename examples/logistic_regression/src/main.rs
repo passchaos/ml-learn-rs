@@ -1,5 +1,3 @@
-extern crate openblas_src;
-
 use std::{collections::HashMap, io::BufRead};
 
 use alg::math::SigmoidOpT;

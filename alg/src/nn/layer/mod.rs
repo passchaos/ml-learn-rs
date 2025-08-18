@@ -1,4 +1,4 @@
-use crate::nn::{Mat, optimizer::Optimizer};
+use crate::nn::{Mat, optimizer::OptimizerOpT};
 
 pub mod batch_norm;
 pub mod linear;

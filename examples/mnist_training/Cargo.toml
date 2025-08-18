@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 alg = { workspace = true }
 ndarray = { workspace = true }
-openblas-src = { workspace = true }
+blas-src = { workspace = true }
 eframe = { workspace = true }
 egui = { workspace = true }
 egui_plot = { workspace = true }
@@ -16,6 +16,8 @@ safetensors = { workspace = true }
 memmap2 = { workspace = true }
 rand = { workspace = true }
 approx = { workspace = true }
+mimalloc = { workspace = true }
+
 
 [dev-dependencies]
 approx = { workspace = true }

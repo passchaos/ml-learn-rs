@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 ndarray = { workspace = true }
-openblas-src = { workspace = true }
+blas-src = { workspace = true }
 alg = { workspace = true }

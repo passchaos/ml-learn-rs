@@ -6,11 +6,11 @@ members = ["alg", "tools", "examples/*"]
 alg = { path = "alg" }
 tools = { path = "tools" }
 ndarray = { version = "*", features = ["blas"] }
-openblas-src = { version = "0.10", features = ["cblas", "system"] }
-ndarray-linalg = { version = "*", features = ["openblas-system"] }
-egui = { version = "0.32.0" }
-eframe = { version = "0.32.0" }
-egui_extras = { version = "0.32.0", features = ["all_loaders", "svg_text"] }
+blas-src = { version = "*", features = ["accelerate"] }
+ndarray-linalg = { version = "*" }
+egui = { version = "0.32.1" }
+eframe = { version = "0.32.1" }
+egui_extras = { version = "0.32.1", features = ["all_loaders", "svg_text"] }
 egui_plot = { version = "0.33.0" }
 md-5 = "*"
 hex = "*"
@@ -21,7 +21,7 @@ tracing-subscriber = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 regex = "*"
-rand = "*"
+rand = { version = "*", features = ["alloc"] }
 rand_distr = "*"
 num = "*"
 approx = "*"
@@ -29,7 +29,15 @@ byteorder = "*"
 image = "*"
 safetensors = "*"
 memmap2 = "*"
+mimalloc = "*"
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 
-[profile.dev.package."*"]
+# [profile.dev.package."*"]
+# opt-level = 3
+[profile.release]
+codegen-units = 1
+lto = "fat"
+
+[profile.dev]
 opt-level = 3
+lto = "fat"

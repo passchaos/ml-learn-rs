@@ -8,7 +8,6 @@ alg = { workspace = true }
 tracing = { workspace = true }
 tools = { workspace = true }
 ndarray = { workspace = true }
-openblas-src = { workspace = true }
 eframe = { workspace = true }
 egui = { workspace = true }
 egui_plot = { workspace = true }

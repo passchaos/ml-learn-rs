@@ -2,9 +2,14 @@ use ndarray::Axis;
 
 use crate::{
     math::stat::randn,
-    nn::{Float, Mat, layer::LayerWard, optimizer::Optimizer},
+    nn::{
+        Float, Mat,
+        layer::LayerWard,
+        optimizer::{Optimizer, OptimizerOpT},
+    },
 };
 
+#[derive(Clone, Copy, Debug)]
 pub enum WeightInit {
     Std(Float),
     Xavier,
@@ -14,8 +19,8 @@ pub enum WeightInit {
 pub struct Linear {
     weight: Mat,
     bias: Option<Mat>,
-    weight_opt: Box<dyn Optimizer>,
-    bias_opt: Option<Box<dyn Optimizer>>,
+    weight_opt: Optimizer,
+    bias_opt: Option<Optimizer>,
     x: Option<Mat>,
 }
 
@@ -24,8 +29,8 @@ impl Linear {
         weight_init: WeightInit,
         input_size: usize,
         output_size: usize,
-        weight_opt: Box<dyn Optimizer>,
-        bias_opt: Option<Box<dyn Optimizer>>,
+        weight_opt: Optimizer,
+        bias_opt: Option<Optimizer>,
         enable_bias: bool,
     ) -> Self {
         let weight = match weight_init {

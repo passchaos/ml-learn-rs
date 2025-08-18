@@ -1,4 +1,4 @@
-extern crate openblas_src;
+extern crate blas_src;
 
 use std::collections::HashMap;
 

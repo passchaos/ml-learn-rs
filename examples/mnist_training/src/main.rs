@@ -1,15 +1,12 @@
-extern crate openblas_src;
+extern crate blas_src;
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Debug,
-};
+// use rand::seq::IndexedRandom;
+use rand::{Rng, prelude::IndexedRandom};
+
+use std::{collections::BTreeMap, fmt::format, time::Instant};
 
 use alg::{
-    math::{
-        DigitalRecognition, ReluOpT, SigmoidOpT, SoftmaxOpT, autodiff::numerical_gradient,
-        loss::cross_entropy_error, normalize::NormalizeTransform, one_hot::OneHotTransform,
-    },
+    math::{DigitalRecognition, normalize::NormalizeTransform, one_hot::OneHotTransform},
     nn::{
         layer::{
             Layer, LayerWard,
@@ -17,16 +14,14 @@ use alg::{
             relu::Relu,
             softmax_loss::SoftmaxWithLoss,
         },
-        optimizer::{Optimizer, Sgd},
+        optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
     },
-    tensor::safetensors::Load,
 };
-use egui::{ColorImage, Image};
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix2};
+use ndarray::{Array2, Axis};
 
-use rand::Rng;
-use rand::seq::{IteratorRandom, SliceRandom};
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 struct Model {
     layers: Vec<Layer>,
@@ -34,24 +29,27 @@ struct Model {
 }
 
 impl Model {
-    fn new(input_size: usize, hidden_size: usize, output_size: usize) -> Self {
-        let w_opt = Sgd::new(0.1);
-        let b_opt = Sgd::new(0.1);
-
+    fn new(
+        input_size: usize,
+        hidden_size: usize,
+        output_size: usize,
+        weight_init: WeightInit,
+        opt: Optimizer,
+    ) -> Self {
         let lin1 = Linear::new(
-            WeightInit::He,
+            weight_init,
             input_size,
             hidden_size,
-            Box::new(w_opt.clone()),
-            Some(Box::new(b_opt.clone())),
+            opt.clone(),
+            Some(opt.clone()),
             true,
         );
         let lin2 = Linear::new(
-            WeightInit::Std(0.01),
+            weight_init,
             hidden_size,
             output_size,
-            Box::new(w_opt),
-            Some(Box::new(b_opt)),
+            opt.clone(),
+            Some(opt),
             true,
         );
         let relu = Relu::default();
@@ -85,137 +83,6 @@ impl Model {
     }
 }
 
-// #[derive(Clone, Debug)]
-// struct TwoLayerNet {
-//     w1: Array2<f32>,
-//     b1: Array1<f32>,
-//     w2: Array2<f32>,
-//     b2: Array1<f32>,
-// }
-
-// impl TwoLayerNet {
-//     fn new(
-//         input_size: usize,
-//         hidden_size: usize,
-//         output_size: usize,
-//         init_weight_generator: WeightGenerator,
-//     ) -> Self {
-//         let w1 = alg::math::stat::randn((input_size, hidden_size)) * 0.01;
-
-//         let w2 = match init_weight_generator {
-//             WeightGenerator::Std(init_std) => {
-//                 alg::math::stat::randn((hidden_size, output_size)) * init_std
-//             }
-//             WeightGenerator::Xavier => {
-//                 alg::math::stat::randn((hidden_size, output_size)) / (hidden_size as f32).sqrt()
-//             }
-//             WeightGenerator::He => {
-//                 alg::math::stat::randn((hidden_size, output_size))
-//                     / (2.0 * hidden_size as f32).sqrt()
-//             }
-//         };
-
-//         let b1 = Array1::zeros(hidden_size);
-//         let b2 = Array1::zeros(output_size);
-
-//         Self { w1, b1, w2, b2 }
-//     }
-
-//     fn predict(&self, x: &ArrayView2<f32>) -> Array2<f32> {
-//         let a1 = x.dot(&self.w1) + &self.b1;
-//         // let z1 = a1.sigmoid();
-//         let z1 = a1.relu();
-//         let a2 = z1.dot(&self.w2) + &self.b2;
-//         let y = a2.softmax();
-
-//         y
-//     }
-
-//     fn loss(&self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
-//         let y = self.predict(x);
-//         cross_entropy_error(y, t.clone())
-//     }
-
-//     fn accuracy(&self, x: &ArrayView2<f32>, t: &Array2<f32>) -> f32 {
-//         let mut y = self.predict(x);
-//         let mut t = t.clone();
-
-//         let y1 = y.map_axis_mut(Axis(1), |arr| {
-//             arr.iter()
-//                 .enumerate()
-//                 .max_by(|(_, a), (_, b)| a.total_cmp(b))
-//                 .map(|(idx, _)| idx)
-//                 .unwrap()
-//         });
-//         let t1 = t.map_axis_mut(Axis(1), |arr| {
-//             arr.iter()
-//                 .enumerate()
-//                 .max_by(|(_, a), (_, b)| a.total_cmp(b))
-//                 .map(|(idx, _)| idx)
-//                 .unwrap()
-//         });
-
-//         let accuracy = y1
-//             .iter()
-//             .zip(t1.iter())
-//             .map(|(y_i, t_i)| if y_i == t_i { 1.0 } else { 0.0 })
-//             .sum::<f32>()
-//             / y1.len() as f32;
-
-//         accuracy
-//     }
-
-//     fn numerical_gradient(&mut self, x: &ArrayView2<f32>, t: &Array2<f32>) -> Self {
-//         let mut w1 = self.w1.clone();
-//         let mut b1 = self.b1.clone();
-//         let mut w2 = self.w2.clone();
-//         let mut b2 = self.b2.clone();
-
-//         let g_w1 = numerical_gradient(
-//             |w1: &Array2<f32>| {
-//                 self.w1 = w1.clone();
-//                 self.loss(x, t)
-//             },
-//             &mut w1,
-//             0.01,
-//         );
-
-//         let g_b1 = numerical_gradient(
-//             |b1: &Array1<f32>| {
-//                 self.b1 = b1.clone();
-//                 self.loss(x, t)
-//             },
-//             &mut b1,
-//             0.01,
-//         );
-
-//         let g_w2 = numerical_gradient(
-//             |w2: &Array2<f32>| {
-//                 self.w2 = w2.clone();
-//                 self.loss(x, t)
-//             },
-//             &mut w2,
-//             0.01,
-//         );
-
-//         let g_b2 = numerical_gradient(
-//             |b2: &Array1<f32>| {
-//                 self.b2 = b2.clone();
-//                 self.loss(x, t)
-//             },
-//             &mut b2,
-//             0.01,
-//         );
-
-//         Self {
-//             w1: g_w1,
-//             b1: g_b1,
-//             w2: g_w2,
-//             b2: g_b2,
-//         }
-//     }
-// }
-
 fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
     let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
 
@@ -238,40 +105,47 @@ fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
     ((train_data, train_labels), (test_data, test_labels))
 }
 
-// fn train_action<S: SimpleOptimizer>(
-//     mut network: TwoLayerNetN<S>,
-//     iters_num: i32,
-//     train_size: usize,
-//     batch_size: usize,
-//     x_train: &Array2<f32>,
-//     t_train: &Array2<f32>,
-// ) -> Vec<f32> {
-//     println!("begin train action: network= {:?}", network.optim);
+fn model_train<R: Rng>(
+    x_train: &Array2<f32>,
+    t_train: &Array2<f32>,
+    x_test: &Array2<f32>,
+    t_test: &Array2<f32>,
+    iters_num: i32,
+    batch_size: usize,
+    sample: &[usize],
+    rng: &mut R,
+    weight_init: WeightInit,
+    optimizer: Optimizer,
+) -> Vec<f32> {
+    let mut model = Model::new(784, 50, 10, weight_init, optimizer);
 
-//     let mut rng = rand::rng();
+    let mut losses = vec![];
 
-//     let mut losses = Vec::new();
+    // train loop speed:
+    // loss使用x_batch
+    // release: 2.38s
+    // codegen=1: 2.15s
+    // mimalloc: 2.05s
+    // remove println: 1.99s
+    for i in 0..iters_num {
+        let batch_mask: Vec<_> = sample.choose_multiple(rng, batch_size).cloned().collect();
 
-//     for i in 0..iters_num {
-//         let begin = std::time::Instant::now();
-//         let idx = rand::seq::index::sample(&mut rng, train_size, batch_size).into_vec();
+        let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
+        let t_batch = t_train.select(Axis(0), batch_mask.as_slice());
 
-//         let x_batch = x_train.select(Axis(0), &idx);
-//         let t_batch = t_train.select(Axis(0), &idx);
+        let _loss = model.loss(&x_batch, &t_batch);
+        model.backward();
 
-//         let grad = network.gradient(&x_batch.view(), &t_batch);
+        let loss = model.loss(x_test, t_test);
+        // println!("elapsed: 1_1= {elapsed11} 1= {elapsed1}, 2= {elapsed2}, 3= {elapsed3}");
 
-//         network.update(&grad);
+        // println!("idx: {i} loss: {loss}");
 
-//         let loss = network.loss(&x_batch.view(), &t_batch);
-//         let elapsed = begin.elapsed();
-//         println!("loss info: idx= {i} loss= {loss} elapsed= {elapsed:?}");
+        losses.push(loss);
+    }
 
-//         losses.push(loss);
-//     }
-
-//     losses
-// }
+    losses
+}
 
 fn main() {
     let ((x_train, t_train), (x_test, t_test)) = load_mnist();
@@ -284,85 +158,94 @@ fn main() {
         t_test.shape()
     );
 
-    let iters_num = 10000;
+    let iters_num = 5000;
     let train_size = x_train.shape()[0];
     let batch_size = 100;
 
-    let lr = 0.1;
-
-    let optimizer = Sgd::new(lr);
-
     let iter_per_epoch = std::cmp::max(train_size / batch_size as usize, 1);
-
-    let mut model = Model::new(784, 50, 10);
 
     let mut rng = rand::rng();
 
-    for i in 0..iters_num {
-        let batch_mask = (0..train_size).choose_multiple(&mut rng, batch_size);
+    let mut losses_map = BTreeMap::new();
 
-        let x_batch = x_train.select(Axis(0), &batch_mask);
-        let t_batch = t_train.select(Axis(0), &batch_mask);
+    let sample: Vec<_> = (0..train_size).into_iter().collect();
 
-        let loss = model.loss(&x_batch, &t_batch);
-        model.backward();
-        println!("loss: {loss}");
+    let comb = vec![
+        // (WeightInit::Std(0.01), Optimizer::Sgd(Sgd::new(0.01))),
+        // (
+        //     WeightInit::Std(0.01),
+        //     Optimizer::Momentum(Momentum::new(0.01, 0.9)),
+        // ),
+        // (
+        //     WeightInit::Std(0.01),
+        //     Optimizer::AdaGrad(AdaGrad::new(0.01)),
+        // ),
+        // (
+        //     WeightInit::Std(0.01),
+        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+        // ),
+        // (WeightInit::Xavier, Optimizer::Sgd(Sgd::new(0.01))),
+        // (
+        //     WeightInit::Xavier,
+        //     Optimizer::Momentum(Momentum::new(0.01, 0.9)),
+        // ),
+        // (WeightInit::Xavier, Optimizer::AdaGrad(AdaGrad::new(0.01))),
+        // (
+        //     WeightInit::Xavier,
+        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+        // ),
+        (WeightInit::He, Optimizer::Sgd(Sgd::new(0.01))),
+        (
+            WeightInit::He,
+            Optimizer::Momentum(Momentum::new(0.01, 0.9)),
+        ),
+        (WeightInit::He, Optimizer::AdaGrad(AdaGrad::new(0.01))),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+        ),
+    ];
 
-        // let x_batch = x_train.slice(s![])
+    for (weight_init, optimizer) in comb {
+        let begin = Instant::now();
+
+        let losses = model_train(
+            &x_train,
+            &t_train,
+            &x_test,
+            &t_test,
+            iters_num,
+            batch_size,
+            &sample,
+            &mut rng,
+            weight_init,
+            optimizer.clone(),
+        );
+
+        let elapsed = begin.elapsed().as_secs_f32();
+        println!("elapsed: {elapsed} weight_init: {weight_init:?} optimizer: {optimizer:?}");
+
+        // let mut maps = BTreeMap::new();
+        // maps.insert(format!("{optimizer:?}"), losses);
+
+        losses_map
+            .entry(format!("{weight_init:?}"))
+            .or_insert_with(|| BTreeMap::default())
+            .insert(format!("{optimizer:?}"), losses);
     }
 
-    // for weight_generator in &weight_generators {
-    //     let inner = TwoLayerNet::new(784, 50, 10, *weight_generator);
+    let app = LossApp { losses_map };
 
-    //     let network = TwoLayerNetN::new(inner.clone(), sgd.clone());
-    //     let losses = train_action(
-    //         network, iters_num, train_size, batch_size, &x_train, &t_train,
-    //     );
+    eframe::run_native(
+        "mnist",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
 
-    //     losses_map
-    //         .entry("SGD".to_string())
-    //         .or_insert_with(|| BTreeMap::new())
-    //         .insert(format!("{weight_generator:?}"), losses);
-
-    //     let network = TwoLayerNetN::new(inner.clone(), momentum.clone());
-    //     let losses = train_action(
-    //         network, iters_num, train_size, batch_size, &x_train, &t_train,
-    //     );
-
-    //     losses_map
-    //         .entry("Momentum".to_string())
-    //         .or_insert_with(|| BTreeMap::new())
-    //         .insert(format!("{weight_generator:?}"), losses);
-
-    //     let network = TwoLayerNetN::new(inner.clone(), ada_grad.clone());
-    //     let losses = train_action(
-    //         network, iters_num, train_size, batch_size, &x_train, &t_train,
-    //     );
-
-    //     losses_map
-    //         .entry("AdaGrad".to_string())
-    //         .or_insert_with(|| BTreeMap::new())
-    //         .insert(format!("{weight_generator:?}"), losses);
-    // }
-
-    // let app = LossApp { losses_map };
-
-    // eframe::run_native(
-    //     "mnist",
-    //     eframe::NativeOptions::default(),
-    //     Box::new(|cc| {
-    //         egui_extras::install_image_loaders(&cc.egui_ctx);
-
-    //         Ok(Box::new(app))
-    //         // Ok(Box::new(App {
-    //         //     network,
-    //         //     data: x_train,
-    //         //     labels: t_train,
-    //         //     idx: 0,
-    //         // }))
-    //     }),
-    // )
-    // .unwrap();
+            Ok(Box::new(app))
+        }),
+    )
+    .unwrap();
 }
 
 struct LossApp {
@@ -393,214 +276,5 @@ impl eframe::App for LossApp {
                     }
                 });
         });
-    }
-}
-
-// struct App<S> {
-//     network: TwoLayerNetN<S>,
-//     data: Array2<f32>,
-//     labels: Array2<f32>,
-//     idx: usize,
-// }
-
-// impl<S> eframe::App for App<S> {
-//     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-//         egui::CentralPanel::default().show(ctx, |ui| {
-//             let data_0_len = self.data.len_of(Axis(0));
-
-//             ui.label(format!("current data row: {}", self.idx));
-
-//             if ui.button("<---").clicked() {
-//                 self.idx = (self.idx + data_0_len - 1) % data_0_len;
-//             }
-
-//             let img_data = self
-//                 .data
-//                 .index_axis(Axis(0), self.idx)
-//                 .map(|a| (a * 255.0) as u8)
-//                 .to_vec();
-
-//             let img_data_a = self.data.index_axis(Axis(0), self.idx);
-//             let img_data_b = img_data_a.to_shape((1, img_data_a.len())).unwrap();
-
-//             let result = self.network.predict(&img_data_b.view());
-//             // let result = predict(&self.network, img_data_a).to_vec();
-
-//             let image = ColorImage::from_gray([28, 28], &img_data);
-//             let texture = ctx.load_texture("abc", image, egui::TextureOptions::default());
-
-//             let img = Image::new(&texture).shrink_to_fit();
-//             ui.add_sized([300.0, 300.0], img);
-
-//             if ui.button("--->").clicked() {
-//                 self.idx = (self.idx + 1) % data_0_len;
-//             }
-
-//             let mut res: Vec<_> = (0..=9).into_iter().zip(result.into_iter()).collect();
-//             res.sort_by(|a, b| b.1.total_cmp(&a.1));
-
-//             let actual_label = self.labels.index_axis(Axis(0), self.idx);
-
-//             ui.label(format!(
-//                 "actual label: {actual_label} predicted label: {res:?}"
-//             ));
-//         });
-//     }
-// }
-
-// #[derive(Debug, Clone)]
-// struct SimpleNet {
-//     w: Array2<f32>,
-// }
-
-// impl SimpleNet {
-//     fn new(w: Array2<f32>) -> Self {
-//         // let mut w = Array2::zeros((2, 3));
-//         // w.mapv_inplace(|a| rand::thread_rng().gen_range(0.0..1.0));
-
-//         Self { w }
-//     }
-
-//     fn predict(&self, x: &Array1<f32>) -> Array1<f32> {
-//         x.dot(&self.w)
-//     }
-
-//     fn loss(&self, x: &Array1<f32>, t: Array1<f32>) -> f32 {
-//         let z = self.predict(x);
-//         let y = z.softmax();
-
-//         let loss = cross_entropy_error(y, t);
-
-//         loss
-//     }
-// }
-
-// fn init_network() -> HashMap<String, Array2<f32>> {
-//     let file_path = std::env::home_dir()
-//         .unwrap()
-//         .join("Work/DeepLearningFromScratch/ch03/sample_weight.safetensors");
-//     let f = std::fs::File::open(file_path).unwrap();
-
-//     let buffer = unsafe { memmap2::MmapOptions::new().map_copy_read_only(&f).unwrap() };
-//     let tensors = safetensors::SafeTensors::deserialize(&buffer).unwrap();
-//     println!("tensors: keys= {:?}", tensors.names());
-
-//     let w1 = tensors.tensor("W1").unwrap().load().unwrap();
-//     let w2 = tensors.tensor("W2").unwrap().load().unwrap();
-//     let w3 = tensors.tensor("W3").unwrap().load().unwrap();
-//     let b1 = tensors.tensor("b1").unwrap().load().unwrap();
-//     let b2 = tensors.tensor("b2").unwrap().load().unwrap();
-//     let b3 = tensors.tensor("b3").unwrap().load().unwrap();
-
-//     let mut map = HashMap::new();
-//     map.insert("w1".to_string(), w1);
-//     map.insert("w2".to_string(), w2);
-//     map.insert("w3".to_string(), w3);
-//     map.insert("b1".to_string(), b1);
-//     map.insert("b2".to_string(), b2);
-//     map.insert("b3".to_string(), b3);
-
-//     for (k, v) in &map {
-//         println!("k: {k} shape= {:?}", v.shape());
-//     }
-
-//     map
-// }
-
-// fn predict(network: &HashMap<String, Array2<f32>>, x: ArrayView1<f32>) -> Array1<f32> {
-//     let w1 = &network["w1"];
-//     let w2 = &network["w2"];
-//     let w3 = &network["w3"];
-
-//     let b1 = &network["b1"];
-//     let b1 = b1.to_shape(b1.shape()[0]).unwrap();
-//     let b2 = &network["b2"];
-//     let b2 = b2.to_shape(b2.shape()[0]).unwrap();
-//     let b3 = &network["b3"];
-//     let b3 = b3.to_shape(b3.shape()[0]).unwrap();
-
-//     let a1 = x.dot(w1) + b1;
-//     let z1 = a1.sigmoid();
-
-//     let a2 = z1.dot(w2) + b2;
-
-//     let z2 = a2.sigmoid();
-//     let a3 = z2.dot(w3) + b3;
-
-//     let y = a3.softmax();
-
-//     y
-// }
-
-#[cfg(test)]
-mod tests {
-
-    use alg::math::{autodiff::numerical_gradient, stat::randn};
-    use approx::assert_relative_eq;
-    use ndarray::{arr1, array};
-
-    use super::*;
-
-    #[test]
-    fn test_simple_network() {
-        let mut w = array![
-            [0.47355232, 0.9977393, 0.84668094],
-            [0.85557411, 0.03563661, 0.69422093]
-        ];
-
-        let net = SimpleNet::new(w.clone());
-
-        let x = arr1(&[0.6, 0.9]);
-        let p = net.predict(&x);
-
-        // one-hot 表示
-        let t = arr1(&[0.0, 0.0, 1.0]);
-        println!("w: {net:?} p: {p} loss= {}", net.loss(&x, t.clone()));
-
-        let f1 = |w: &Array2<f32>| {
-            let net = SimpleNet::new(w.clone());
-            net.loss(&x, t.clone())
-        };
-
-        let a = numerical_gradient(f1, &mut w, 0.001);
-
-        assert_relative_eq!(
-            a,
-            array![
-                [0.21924763, 0.14356247, -0.36281009],
-                [0.32887144, 0.2153437, -0.54421514]
-            ],
-            max_relative = 0.001
-        );
-        println!("a: {a}");
-
-        // test for SimpleNet reuse
-        // let mut net = SimpleNet::new(w.clone());
-
-        // let f1 = |w: &Array2<f32>| net.loss(&x, t.clone());
-
-        // let a = numerical_gradient(f1, &mut net.w, 0.001);
-
-        // assert_relative_eq!(
-        //     a,
-        //     array![
-        //         [0.21924763, 0.14356247, -0.36281009],
-        //         [0.32887144, 0.2153437, -0.54421514]
-        //     ],
-        //     max_relative = 0.001
-        // );
-        // println!("a: {a}");
-    }
-
-    #[test]
-    fn test_two_layer_net() {
-        let mut net = TwoLayerNet::new(784, 100, 10, WeightGenerator::Std(0.01));
-
-        let x = randn((100, 784));
-        let t = randn((100, 10));
-
-        let grads = net.numerical_gradient(&x.view(), &t);
-        println!("grads: {grads:?}");
-        // let t = net.predict(&x);
     }
 }

@@ -1,8 +1,27 @@
 use crate::nn::Float;
 use crate::nn::Mat;
 
-pub trait Optimizer {
+pub trait OptimizerOpT: std::fmt::Debug {
     fn step(&mut self, param: &mut Mat, grad: &Mat);
+}
+
+#[derive(Clone, Debug)]
+pub enum Optimizer {
+    Sgd(Sgd),
+    Momentum(Momentum),
+    AdaGrad(AdaGrad),
+    Adam(Adam),
+}
+
+impl OptimizerOpT for Optimizer {
+    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+        match self {
+            Optimizer::Sgd(sgd) => sgd.step(param, grad),
+            Optimizer::Momentum(momentum) => momentum.step(param, grad),
+            Optimizer::AdaGrad(adagrad) => adagrad.step(param, grad),
+            Optimizer::Adam(adam) => adam.step(param, grad),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -16,7 +35,7 @@ impl Sgd {
     }
 }
 
-impl Optimizer for Sgd {
+impl OptimizerOpT for Sgd {
     fn step(&mut self, param: &mut Mat, grad: &Mat) {
         *param -= &(grad * self.lr.clone());
     }
@@ -39,7 +58,7 @@ impl Momentum {
     }
 }
 
-impl Optimizer for Momentum {
+impl OptimizerOpT for Momentum {
     fn step(&mut self, param: &mut Mat, grad: &Mat) {
         // 初始化v
         if self.v.is_none() {
@@ -68,7 +87,7 @@ impl AdaGrad {
     }
 }
 
-impl Optimizer for AdaGrad {
+impl OptimizerOpT for AdaGrad {
     fn step(&mut self, param: &mut Mat, grad: &Mat) {
         // 初始化v
         if self.h.is_none() {
@@ -105,7 +124,7 @@ impl RMSprop {
     }
 }
 
-impl Optimizer for RMSprop {
+impl OptimizerOpT for RMSprop {
     fn step(&mut self, param: &mut Mat, grad: &Mat) {
         // 初始化v
         if self.h.is_none() {
@@ -137,7 +156,20 @@ pub struct Adam {
     v: Option<Mat>,
 }
 
-impl Optimizer for Adam {
+impl Adam {
+    pub fn new(lr: Float, beta1: Float, beta2: Float) -> Self {
+        Self {
+            lr,
+            beta1,
+            beta2,
+            iter: 0,
+            m: None,
+            v: None,
+        }
+    }
+}
+
+impl OptimizerOpT for Adam {
     fn step(&mut self, param: &mut Mat, grad: &Mat) {
         if self.m.is_none() {
             let default_value = Mat::zeros(param.raw_dim());
