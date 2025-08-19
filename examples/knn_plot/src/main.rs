@@ -42,10 +42,7 @@ fn main() {
     eframe::run_native(
         "Plot",
         eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            tools::add_font(&cc.egui_ctx);
-            Ok(Box::new(data))
-        }),
+        Box::new(|cc| Ok(Box::new(data))),
     )
     .unwrap();
 }

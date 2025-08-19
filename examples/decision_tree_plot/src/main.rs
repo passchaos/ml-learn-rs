@@ -44,7 +44,6 @@ fn main() {
         eframe::NativeOptions::default(),
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            tools::add_font(&cc.egui_ctx);
             Ok(Box::new(DecisionTreePlot::new(cc, dot_c)))
         }),
     )
