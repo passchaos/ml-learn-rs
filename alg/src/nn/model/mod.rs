@@ -42,6 +42,11 @@ impl Model {
             );
             layers.push(Layer::Linear(lin));
 
+            if let Some(ratio) = dropout_ratio {
+                let dropout = Dropout::new(ratio);
+                layers.push(Layer::Dropout(dropout));
+            };
+
             if let Some(momentum) = batch_norm_momentum {
                 let gamma = Mat::ones((1, inner_output_size));
                 let beta = Mat::zeros((1, inner_output_size));
@@ -51,11 +56,6 @@ impl Model {
             }
             let relu = Relu::default();
             layers.push(Layer::Relu(relu));
-
-            if let Some(ratio) = dropout_ratio {
-                let dropout = Dropout::new(ratio);
-                layers.push(Layer::Dropout(dropout));
-            };
 
             inner_input_size = inner_output_size;
         }

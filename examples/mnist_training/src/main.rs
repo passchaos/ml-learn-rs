@@ -1,11 +1,13 @@
 extern crate blas_src;
 
+use egui::mutex::RwLock;
 // use rand::seq::IndexedRandom;
 use rand::{Rng, prelude::IndexedRandom};
 
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::format,
+    sync::Arc,
     time::Instant,
 };
 
@@ -52,6 +54,8 @@ fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
 }
 
 fn model_train<R: Rng>(
+    losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>,
+    model_name: &str,
     x_train: &Array2<f32>,
     t_train: &Array2<f32>,
     x_test: &Array2<f32>,
@@ -63,19 +67,17 @@ fn model_train<R: Rng>(
     weight_init: WeightInit,
     optimizer: Optimizer,
     batch_norm_momentum: Option<f32>,
-    dropout_rate: Option<f32>,
-) -> Vec<f32> {
+    dropout_ratio: Option<f32>,
+) {
     let mut model = Model::new(
         784,
-        &[100, 100, 100, 100, 100, 100],
+        &[100, 100],
         10,
         weight_init,
         batch_norm_momentum,
-        dropout_rate,
+        dropout_ratio,
         optimizer,
     );
-
-    let mut losses = vec![];
 
     // train loop speed:
     // loss使用x_batch
@@ -95,15 +97,17 @@ fn model_train<R: Rng>(
         let loss = model.loss(x_test, t_test);
         // println!("elapsed: 1_1= {elapsed11} 1= {elapsed1}, 2= {elapsed2}, 3= {elapsed3}");
 
-        // println!("idx: {i} loss: {loss}");
+        println!("idx: {i} loss: {loss}");
 
-        losses.push(loss);
+        losses_map
+            .write()
+            .entry(model_name.to_string())
+            .or_insert_with(|| vec![])
+            .push(loss);
     }
-
-    losses
 }
 
-fn main() {
+fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
     let ((x_train, t_train), (x_test, t_test)) = load_mnist();
 
     println!(
@@ -114,11 +118,11 @@ fn main() {
         t_test.shape()
     );
 
-    let iters_num = 2000;
+    let iters_num = 5000;
     let batch_size = 100;
 
-    let x_train = x_train.slice(s![0..1000, ..]).to_owned();
-    let t_train = t_train.slice(s![0..1000, ..]).to_owned();
+    // let x_train = x_train.slice(s![0..1000, ..]).to_owned();
+    // let t_train = t_train.slice(s![0..1000, ..]).to_owned();
 
     let train_size = x_train.shape()[0];
     // let x_train = x_train.select(Axis(0), &[0..1000]);
@@ -128,7 +132,7 @@ fn main() {
 
     let mut rng = rand::rng();
 
-    let mut losses_map = HashMap::new();
+    // let mut losses_map = HashMap::new();
 
     let sample: Vec<_> = (0..train_size).into_iter().collect();
 
@@ -191,7 +195,13 @@ fn main() {
     for (weight_init, optimizer, batch_norm_momentum, dropout_ratio) in comb {
         let begin = Instant::now();
 
-        let losses = model_train(
+        let model_name = format!(
+            "Weight={weight_init:?}_Opt={optimizer:?}_BatchNorm={batch_norm_momentum:?}_Dropout={dropout_ratio:?}"
+        );
+
+        model_train(
+            losses_map.clone(),
+            &model_name,
             &x_train,
             &t_train,
             &x_test,
@@ -207,17 +217,19 @@ fn main() {
         );
 
         let elapsed = begin.elapsed().as_secs_f32();
-        println!("elapsed: {elapsed} weight_init: {weight_init:?} optimizer: {optimizer:?}");
-
-        // let mut maps = BTreeMap::new();
-        // maps.insert(format!("{optimizer:?}"), losses);
-        losses_map.insert(
-            format!("{weight_init:?}_{optimizer:?}_{batch_norm_momentum:?}_{dropout_ratio:?}"),
-            losses,
-        );
+        println!("elapsed: {elapsed} model= {model_name}");
     }
+}
 
-    let app = LossApp { losses_map };
+fn main() {
+    let losses_map = Arc::new(RwLock::new(HashMap::new()));
+    let app = LossApp {
+        losses_map: losses_map.clone(),
+    };
+
+    std::thread::spawn(move || {
+        train_logic(losses_map);
+    });
 
     eframe::run_native(
         "mnist",
@@ -232,17 +244,23 @@ fn main() {
 }
 
 struct LossApp {
-    losses_map: HashMap<String, Vec<f32>>,
+    losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>,
 }
 
 impl eframe::App for LossApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // println!("update");
         egui::CentralPanel::default().show(ctx, |ui| {
             let legend = Legend::default().position(egui_plot::Corner::RightTop);
             egui_plot::Plot::new(format!("plot"))
                 .legend(legend)
                 .show(ui, |plot_ui| {
-                    for (name, losses) in &self.losses_map {
+                    let guard = self.losses_map.read();
+                    // println!("len: {}", guard.len());
+
+                    for (name, losses) in &*guard {
+                        // println!("name: {name} losses_len= {}", losses.len());
+
                         let points = losses
                             .into_iter()
                             .enumerate()
@@ -254,5 +272,7 @@ impl eframe::App for LossApp {
                     }
                 });
         });
+
+        ctx.request_repaint_after_secs(0.1);
     }
 }
