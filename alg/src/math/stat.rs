@@ -1,6 +1,7 @@
 use ndarray::{Array, Dimension, ShapeBuilder};
 use num::Float;
-use rand_distr::{Distribution, StandardNormal};
+use rand::Rng;
+use rand_distr::{Distribution, StandardNormal, Uniform, uniform::SampleUniform};
 
 pub fn randn<S, D, F: Float>(shape: S) -> Array<F, D>
 where
@@ -14,6 +15,21 @@ where
     let normal = rand_distr::Normal::new(F::zero(), F::one()).unwrap();
 
     arr.mapv_inplace(|_a| normal.sample(&mut rng));
+
+    arr
+}
+
+pub fn rand<S, D, F: Float>(shape: S) -> Array<F, D>
+where
+    D: Dimension,
+    S: ShapeBuilder<Dim = D>,
+    F: SampleUniform,
+{
+    let mut arr = Array::zeros(shape);
+
+    let mut rng = rand::rng();
+
+    arr.mapv_inplace(|_a| rng.random_range(F::zero()..F::one()));
 
     arr
 }

@@ -1,5 +1,3 @@
-use num::Float;
-
 use crate::nn::{Mat, layer::LayerWard};
 
 pub struct Sigmoid {

@@ -31,21 +31,24 @@ impl Linear {
         output_size: usize,
         weight_opt: Optimizer,
         bias_opt: Option<Optimizer>,
-        enable_bias: bool,
     ) -> Self {
-        let weight = match weight_init {
-            WeightInit::Std(std) => randn((input_size, output_size)) * std,
+        let weight = randn((input_size, output_size));
+
+        let scale = match weight_init {
+            WeightInit::Std(std) => std,
             WeightInit::Xavier => {
                 let scale = (6.0 / (input_size + output_size) as Float).sqrt();
-                randn((input_size, output_size)) * scale
+                scale
             }
             WeightInit::He => {
                 let scale = (2.0 / input_size as Float).sqrt();
-                randn((input_size, output_size)) * scale
+                scale
             }
         };
 
-        let bias = if enable_bias {
+        let weight = weight * scale;
+
+        let bias = if bias_opt.is_some() {
             Some(Mat::zeros((1, output_size)))
         } else {
             None

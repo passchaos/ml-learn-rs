@@ -23,15 +23,29 @@ pub struct BatchNorm {
     opt: Optimizer,
 }
 
+impl BatchNorm {
+    pub fn new(gamma: Mat, beta: Mat, momentum: Float, opt: Optimizer) -> Self {
+        Self {
+            gamma,
+            beta,
+            momentum,
+            info: None,
+            opt,
+        }
+    }
+}
+
 impl LayerWard for BatchNorm {
     fn forward(&mut self, input: &crate::nn::Mat) -> crate::nn::Mat {
         let mu = input.mean_axis(Axis(0)).unwrap();
 
         let xc = input - &mu;
         let var = xc.pow2().mean_axis(Axis(0)).unwrap();
-        let std = (&var + float_epsilon()).sqrt();
+        let std = (&var + 1.0e-6).sqrt();
 
         let xn = &xc / &std;
+
+        // println!("mu: {mu} xc: {xc} var: {var} std: {std} xn: {xn}");
 
         let (mut running_mean, mut running_var) = if let Some(info) = self.info.as_ref() {
             (info.running_mean.clone(), info.running_var.clone())
@@ -52,6 +66,13 @@ impl LayerWard for BatchNorm {
         };
 
         self.info = Some(info);
+        // println!(
+        //     "shape: input= {:?} gamma= {:?} xn= {:?} beta= {:?}",
+        //     input.shape(),
+        //     self.gamma.shape(),
+        //     xn.shape(),
+        //     self.beta.shape()
+        // );
 
         &self.gamma * xn + &self.beta
     }
@@ -67,10 +88,13 @@ impl LayerWard for BatchNorm {
         let mut dxc = &dxn / &info.std;
         let dstd = ((&dxn * &info.xc) / (&info.std).pow2()).sum_axis(Axis(0)) * -1.0;
         let dvar = 0.5 * &dstd / &info.std;
+
+        // println!("dbeta: {dbeta} dgamma: {dgemma} dxn: {dxn} dxc: {dxc} dstd: {dstd} dvar: {dvar}");
+
         dxc += &((2.0 / info.batch_size as Float) * &info.xc * &dvar);
 
         let dmu = dxc.sum_axis(Axis(0));
-        let dx = (dxc - dmu) / info.batch_size as Float;
+        let dx = dxc - (dmu / info.batch_size as Float);
 
         let dgemma = dgemma.insert_axis(Axis(0));
         let dbeta = dbeta.insert_axis(Axis(0));
@@ -84,7 +108,10 @@ impl LayerWard for BatchNorm {
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Axis, arr2};
+    use crate::nn::optimizer::Sgd;
+
+    use super::*;
+    use ndarray::{Array2, Axis, arr2};
 
     #[test]
     fn test_ndarray_axis() {
@@ -93,5 +120,24 @@ mod tests {
         let arr2 = arr.sum_axis(Axis(0)).insert_axis(Axis(0));
         let arr3 = arr.sum_axis(Axis(0)).insert_axis(Axis(1));
         println!("arr= {arr} arr1= {arr1} arr2= {arr2} arr3= {arr3}");
+    }
+
+    #[test]
+    fn test_batch_norm_forward() {
+        let mut input = arr2(&[
+            [0.0, 0.2, 0.11, 0.13, 0.25],
+            [-0.02, 0.03, 0.23, 0.58, 0.19],
+        ]);
+
+        let gemma = Array2::ones((1, input.shape()[1]));
+        let beta = Array2::zeros((1, input.shape()[1]));
+
+        let mut batch_norm = BatchNorm::new(gemma, beta, 0.9, Optimizer::Sgd(Sgd::new(0.1)));
+
+        for i in 0..5 {
+            input = batch_norm.forward(&input);
+            let res = batch_norm.backward(&input);
+            println!("input{i}: {input} res{i}: {res}")
+        }
     }
 }

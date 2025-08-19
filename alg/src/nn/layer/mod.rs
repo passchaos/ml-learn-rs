@@ -1,4 +1,4 @@
-use crate::nn::{Mat, optimizer::OptimizerOpT};
+use crate::nn::Mat;
 
 pub mod batch_norm;
 pub mod dropout;

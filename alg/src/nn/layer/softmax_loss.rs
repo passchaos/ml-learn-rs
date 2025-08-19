@@ -1,5 +1,3 @@
-use ndarray::{Array, Dimension, NdFloat};
-
 use crate::{
     math::{SoftmaxOpT, loss::cross_entropy_error},
     nn::{Float, Mat},

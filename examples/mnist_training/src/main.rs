@@ -3,85 +3,31 @@ extern crate blas_src;
 // use rand::seq::IndexedRandom;
 use rand::{Rng, prelude::IndexedRandom};
 
-use std::{collections::BTreeMap, fmt::format, time::Instant};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::format,
+    time::Instant,
+};
 
 use alg::{
     math::{DigitalRecognition, normalize::NormalizeTransform, one_hot::OneHotTransform},
     nn::{
         layer::{
             Layer, LayerWard,
+            dropout::Dropout,
             linear::{Linear, WeightInit},
             relu::Relu,
             softmax_loss::SoftmaxWithLoss,
         },
+        model::Model,
         optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
     },
 };
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array2, Axis};
+use ndarray::{Array2, Axis, s};
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
-struct Model {
-    layers: Vec<Layer>,
-    out: SoftmaxWithLoss,
-}
-
-impl Model {
-    fn new(
-        input_size: usize,
-        hidden_size: usize,
-        output_size: usize,
-        weight_init: WeightInit,
-        opt: Optimizer,
-    ) -> Self {
-        let lin1 = Linear::new(
-            weight_init,
-            input_size,
-            hidden_size,
-            opt.clone(),
-            Some(opt.clone()),
-            true,
-        );
-        let lin2 = Linear::new(
-            weight_init,
-            hidden_size,
-            output_size,
-            opt.clone(),
-            Some(opt),
-            true,
-        );
-        let relu = Relu::default();
-
-        let layers = vec![Layer::Linear(lin1), Layer::Relu(relu), Layer::Linear(lin2)];
-        let out = SoftmaxWithLoss::default();
-
-        Self { layers, out }
-    }
-
-    fn predict(&mut self, x: &Array2<f32>) -> Array2<f32> {
-        let mut x = x.clone();
-        for layer in &mut self.layers {
-            x = layer.forward(&x);
-        }
-
-        x
-    }
-
-    fn loss(&mut self, x: &Array2<f32>, t: &Array2<f32>) -> f32 {
-        let y = self.predict(x);
-        self.out.forward(&y, t)
-    }
-
-    fn backward(&mut self) {
-        let mut dout = self.out.backward();
-
-        for layer in self.layers.iter_mut().rev() {
-            dout = layer.backward(&dout);
-        }
-    }
-}
 
 fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
     let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
@@ -116,8 +62,18 @@ fn model_train<R: Rng>(
     rng: &mut R,
     weight_init: WeightInit,
     optimizer: Optimizer,
+    batch_norm_momentum: Option<f32>,
+    dropout_rate: Option<f32>,
 ) -> Vec<f32> {
-    let mut model = Model::new(784, 50, 10, weight_init, optimizer);
+    let mut model = Model::new(
+        784,
+        &[100, 100, 100, 100, 100, 100],
+        10,
+        weight_init,
+        batch_norm_momentum,
+        dropout_rate,
+        optimizer,
+    );
 
     let mut losses = vec![];
 
@@ -133,7 +89,7 @@ fn model_train<R: Rng>(
         let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
         let t_batch = t_train.select(Axis(0), batch_mask.as_slice());
 
-        let _loss = model.loss(&x_batch, &t_batch);
+        let loss = model.loss(&x_batch, &t_batch);
         model.backward();
 
         let loss = model.loss(x_test, t_test);
@@ -158,15 +114,21 @@ fn main() {
         t_test.shape()
     );
 
-    let iters_num = 5000;
-    let train_size = x_train.shape()[0];
+    let iters_num = 2000;
     let batch_size = 100;
+
+    let x_train = x_train.slice(s![0..1000, ..]).to_owned();
+    let t_train = t_train.slice(s![0..1000, ..]).to_owned();
+
+    let train_size = x_train.shape()[0];
+    // let x_train = x_train.select(Axis(0), &[0..1000]);
+    // let t_train = t_train.select(Axis(0), &[0..1000]);
 
     let iter_per_epoch = std::cmp::max(train_size / batch_size as usize, 1);
 
     let mut rng = rand::rng();
 
-    let mut losses_map = BTreeMap::new();
+    let mut losses_map = HashMap::new();
 
     let sample: Vec<_> = (0..train_size).into_iter().collect();
 
@@ -194,19 +156,39 @@ fn main() {
         //     WeightInit::Xavier,
         //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
         // ),
-        (WeightInit::He, Optimizer::Sgd(Sgd::new(0.01))),
-        (
-            WeightInit::He,
-            Optimizer::Momentum(Momentum::new(0.01, 0.9)),
-        ),
-        (WeightInit::He, Optimizer::AdaGrad(AdaGrad::new(0.01))),
+        // (WeightInit::He, Optimizer::Sgd(Sgd::new(0.01))),
+        // (
+        //     WeightInit::He,
+        //     Optimizer::Momentum(Momentum::new(0.01, 0.9)),
+        // ),
+        // (WeightInit::He, Optimizer::AdaGrad(AdaGrad::new(0.01))),
         (
             WeightInit::He,
             Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            None,
+            None,
+        ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            Some(0.9),
+            None,
+        ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            None,
+            Some(0.2),
+        ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            Some(0.9),
+            Some(0.2),
         ),
     ];
 
-    for (weight_init, optimizer) in comb {
+    for (weight_init, optimizer, batch_norm_momentum, dropout_ratio) in comb {
         let begin = Instant::now();
 
         let losses = model_train(
@@ -220,6 +202,8 @@ fn main() {
             &mut rng,
             weight_init,
             optimizer.clone(),
+            batch_norm_momentum,
+            dropout_ratio,
         );
 
         let elapsed = begin.elapsed().as_secs_f32();
@@ -227,11 +211,10 @@ fn main() {
 
         // let mut maps = BTreeMap::new();
         // maps.insert(format!("{optimizer:?}"), losses);
-
-        losses_map
-            .entry(format!("{weight_init:?}"))
-            .or_insert_with(|| BTreeMap::default())
-            .insert(format!("{optimizer:?}"), losses);
+        losses_map.insert(
+            format!("{weight_init:?}_{optimizer:?}_{batch_norm_momentum:?}_{dropout_ratio:?}"),
+            losses,
+        );
     }
 
     let app = LossApp { losses_map };
@@ -249,7 +232,7 @@ fn main() {
 }
 
 struct LossApp {
-    losses_map: BTreeMap<String, BTreeMap<String, Vec<f32>>>,
+    losses_map: HashMap<String, Vec<f32>>,
 }
 
 impl eframe::App for LossApp {
@@ -259,20 +242,15 @@ impl eframe::App for LossApp {
             egui_plot::Plot::new(format!("plot"))
                 .legend(legend)
                 .show(ui, |plot_ui| {
-                    for (optim_name, weight_losses) in &self.losses_map {
-                        for (weight_generator, losses) in weight_losses {
-                            let points = losses
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, loss)| [idx as f64, *loss as f64]);
+                    for (name, losses) in &self.losses_map {
+                        let points = losses
+                            .into_iter()
+                            .enumerate()
+                            .map(|(idx, loss)| [idx as f64, *loss as f64]);
 
-                            let points = PlotPoints::from_iter(points);
+                        let points = PlotPoints::from_iter(points);
 
-                            plot_ui.points(
-                                Points::new("optim", points)
-                                    .name(format!("{optim_name}_{weight_generator}")),
-                            );
-                        }
+                        plot_ui.points(Points::new(name, points));
                     }
                 });
         });

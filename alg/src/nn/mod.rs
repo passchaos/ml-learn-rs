@@ -6,5 +6,6 @@ pub fn float_epsilon() -> Float {
 }
 
 pub mod layer;
+pub mod model;
 pub mod optimizer;
 pub mod train;
