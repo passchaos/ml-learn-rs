@@ -2514,15 +2514,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "neural_network"
-version = "0.1.0"
-dependencies = [
- "alg",
- "blas-src",
- "ndarray",
-]
-
-[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

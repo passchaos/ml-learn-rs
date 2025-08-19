@@ -1,5 +1,3 @@
-use std::ops::Mul;
-
 use ndarray::{Array, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Dimension, NdFloat};
 use num::traits::float::TotalOrder;
 pub mod autodiff;

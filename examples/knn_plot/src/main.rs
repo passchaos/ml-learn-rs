@@ -69,7 +69,7 @@ impl eframe::App for UiState {
 impl UiState {
     fn plot(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.heading("炼丹");
+            ui.heading("liandan");
 
             ui.vertical(|ui| {
                 ui.radio_value(&mut self.relation, Relation::AB, "A_B");
@@ -82,9 +82,9 @@ impl UiState {
         let b = self.data.slice(s![.., 1]);
         let c = self.data.slice(s![.., 2]);
 
-        let a = (a, "每年获得的飞行客里程数");
-        let b = (b, "玩视频游戏所耗时间百分比");
-        let c = (c, "每周消费的冰激凌公升数");
+        let a = (a, "flight_time");
+        let b = (b, "game_time");
+        let c = (c, "icecream");
 
         let (x, y) = match self.relation {
             Relation::AB => (a, b),
@@ -118,17 +118,12 @@ impl UiState {
                         let color = Color32::from_rgb(r * weight, g * weight, b * weight);
 
                         let label = match *weight {
-                            1 => "不喜欢",
-                            2 => "魅力一般",
-                            _ => "极具魅力",
+                            1 => "no",
+                            2 => "general",
+                            _ => "beauty",
                         };
 
-                        plot_ui.points(
-                            Points::new("sine", sine_points)
-                                .name(label)
-                                .radius(radius)
-                                .color(color),
-                        );
+                        plot_ui.points(Points::new(label, sine_points).radius(radius).color(color));
                     }
                 });
         });

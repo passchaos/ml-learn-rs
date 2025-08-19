@@ -1,7 +1,7 @@
 use ndarray::{Array, Dimension, ShapeBuilder};
 use num::Float;
 use rand::Rng;
-use rand_distr::{Distribution, StandardNormal, Uniform, uniform::SampleUniform};
+use rand_distr::{Distribution, StandardNormal, uniform::SampleUniform};
 
 pub fn randn<S, D, F: Float>(shape: S) -> Array<F, D>
 where

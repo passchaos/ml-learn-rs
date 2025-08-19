@@ -1,5 +1,5 @@
 use crate::{
-    math::stat::{rand, randn},
+    math::stat::rand,
     nn::{Float, Mat, layer::LayerWard},
 };
 

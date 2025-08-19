@@ -1,9 +1,0 @@
-[package]
-name = "neural_network"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-ndarray = { workspace = true }
-blas-src = { workspace = true }
-alg = { workspace = true }
