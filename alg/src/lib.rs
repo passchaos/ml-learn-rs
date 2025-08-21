@@ -1,7 +1,6 @@
 extern crate blas_src;
 
 pub mod bayes;
-pub mod dataset;
 pub mod decision_tree;
 pub mod knn;
 pub mod logistic;

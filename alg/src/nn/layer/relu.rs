@@ -1,29 +1,23 @@
-use crate::nn::{Mat, layer::LayerWard};
+use burn_tensor::Bool;
+
+use crate::nn::{Tensor2, layer::LayerWard};
 
 #[derive(Default)]
 pub struct Relu {
-    mask: Option<Mat<bool>>,
+    mask: Option<Tensor2<Bool>>,
 }
 
 impl LayerWard for Relu {
-    fn forward(&mut self, x: &Mat) -> Mat {
-        self.mask = Some(x.mapv(|a| a <= 0.0));
+    fn forward(&mut self, x: Tensor2) -> Tensor2 {
+        self.mask = Some(x.clone().lower_equal_elem(0.0));
 
-        let out = x.mapv(|a| if a > 0.0 { a } else { 0.0 });
+        let out = x.clamp_min(0.0);
 
         out
     }
 
-    fn backward(&mut self, grad: &Mat) -> Mat {
-        let mut out = grad.clone();
-
-        for (idx, a) in out.indexed_iter_mut() {
-            let v = self.mask.as_ref().unwrap()[idx];
-
-            if v {
-                *a = 0.0;
-            }
-        }
+    fn backward(&mut self, grad: Tensor2) -> Tensor2 {
+        let out = grad.mask_fill(self.mask.as_ref().unwrap().clone(), 0.0);
 
         out
     }

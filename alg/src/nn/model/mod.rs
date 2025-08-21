@@ -1,5 +1,5 @@
 use crate::nn::{
-    Float, Mat,
+    Float, Tensor2, default_device,
     layer::{
         Layer, LayerWard,
         batch_norm::BatchNorm,
@@ -48,8 +48,8 @@ impl Model {
             };
 
             if let Some(momentum) = batch_norm_momentum {
-                let gamma = Mat::ones((1, inner_output_size));
-                let beta = Mat::zeros((1, inner_output_size));
+                let gamma = Tensor2::ones([1, inner_output_size], &default_device());
+                let beta = Tensor2::zeros([1, inner_output_size], &default_device());
                 let batch_norm = BatchNorm::new(gamma, beta, momentum, opt.clone());
 
                 layers.push(Layer::BatchNorm(batch_norm));
@@ -74,25 +74,25 @@ impl Model {
         Self { layers, out }
     }
 
-    pub fn predict(&mut self, x: &Mat) -> Mat {
+    pub fn predict(&mut self, x: &Tensor2) -> Tensor2 {
         let mut x = x.clone();
         for layer in &mut self.layers {
-            x = layer.forward(&x);
+            x = layer.forward(x);
         }
 
         x
     }
 
-    pub fn loss(&mut self, x: &Mat, t: &Mat) -> f32 {
+    pub fn loss(&mut self, x: &Tensor2, t: &Tensor2) -> f32 {
         let y = self.predict(x);
-        self.out.forward(&y, t)
+        self.out.forward(y, t.clone())
     }
 
     pub fn backward(&mut self) {
         let mut dout = self.out.backward();
 
         for layer in self.layers.iter_mut().rev() {
-            dout = layer.backward(&dout);
+            dout = layer.backward(dout);
         }
     }
 }

@@ -14,6 +14,7 @@ use std::{
 use alg::{
     math::{DigitalRecognition, normalize::NormalizeTransform, one_hot::OneHotTransform},
     nn::{
+        Tensor1, Tensor2, default_device,
         layer::{
             Layer, LayerWard,
             dropout::Dropout,
@@ -24,6 +25,7 @@ use alg::{
         model::Model,
         optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
     },
+    tensor::Tensor,
 };
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array2, Axis, s};
@@ -31,24 +33,20 @@ use ndarray::{Array2, Axis, s};
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
+fn load_mnist() -> ((Tensor2, Tensor2), (Tensor2, Tensor2)) {
     let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
 
     let train_data_path = mnist_dir.join("train-images.idx3-ubyte");
-    let train_data = alg::dataset::mnist::load_images(train_data_path);
-    let train_data = DigitalRecognition::normalize(&train_data);
+    let train_data = alg::nn::dataset::mnist::load_images(train_data_path);
 
     let label_data_path = mnist_dir.join("train-labels.idx1-ubyte");
-    let train_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let train_labels = DigitalRecognition::one_hot(&train_labels);
+    let train_labels = alg::nn::dataset::mnist::load_labels(label_data_path);
 
     let test_data_path = mnist_dir.join("t10k-images.idx3-ubyte");
-    let test_data = alg::dataset::mnist::load_images(test_data_path);
-    let test_data = DigitalRecognition::normalize(&test_data);
+    let test_data = alg::nn::dataset::mnist::load_images(test_data_path);
 
     let label_data_path = mnist_dir.join("t10k-labels.idx1-ubyte");
-    let test_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let test_labels = DigitalRecognition::one_hot(&test_labels);
+    let test_labels = alg::nn::dataset::mnist::load_labels(label_data_path);
 
     ((train_data, train_labels), (test_data, test_labels))
 }
@@ -56,10 +54,10 @@ fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
 fn model_train<R: Rng>(
     losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>,
     model_name: &str,
-    x_train: &Array2<f32>,
-    t_train: &Array2<f32>,
-    x_test: &Array2<f32>,
-    t_test: &Array2<f32>,
+    x_train: &Tensor2,
+    t_train: &Tensor2,
+    x_test: &Tensor2,
+    t_test: &Tensor2,
     iters_num: i32,
     batch_size: usize,
     sample: &[usize],
@@ -88,8 +86,11 @@ fn model_train<R: Rng>(
     for i in 0..iters_num {
         let batch_mask: Vec<_> = sample.choose_multiple(rng, batch_size).cloned().collect();
 
-        let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
-        let t_batch = t_train.select(Axis(0), batch_mask.as_slice());
+        let indices = Tensor1::from_data(batch_mask.as_slice(), &default_device());
+
+        let x_batch = x_train.clone().select(0, indices.clone());
+        // let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
+        let t_batch = t_train.clone().select(0, indices.clone());
 
         let loss = model.loss(&x_batch, &t_batch);
         model.backward();
@@ -124,7 +125,7 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
     // let x_train = x_train.slice(s![0..1000, ..]).to_owned();
     // let t_train = t_train.slice(s![0..1000, ..]).to_owned();
 
-    let train_size = x_train.shape()[0];
+    let train_size = x_train.dims()[0];
     // let x_train = x_train.select(Axis(0), &[0..1000]);
     // let t_train = t_train.select(Axis(0), &[0..1000]);
 

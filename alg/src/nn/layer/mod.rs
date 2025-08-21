@@ -1,4 +1,4 @@
-use crate::nn::Mat;
+use crate::nn::Tensor2;
 
 pub mod batch_norm;
 pub mod dropout;
@@ -16,7 +16,7 @@ pub enum Layer {
 }
 
 impl LayerWard for Layer {
-    fn forward(&mut self, input: &Mat) -> Mat {
+    fn forward(&mut self, input: Tensor2) -> Tensor2 {
         match self {
             Layer::Linear(layer) => layer.forward(input),
             Layer::Relu(layer) => layer.forward(input),
@@ -25,7 +25,7 @@ impl LayerWard for Layer {
             Layer::BatchNorm(layer) => layer.forward(input),
         }
     }
-    fn backward(&mut self, grad: &Mat) -> Mat {
+    fn backward(&mut self, grad: Tensor2) -> Tensor2 {
         match self {
             Layer::Linear(layer) => layer.backward(grad),
             Layer::Relu(layer) => layer.backward(grad),
@@ -37,6 +37,6 @@ impl LayerWard for Layer {
 }
 
 pub trait LayerWard {
-    fn forward(&mut self, input: &Mat) -> Mat;
-    fn backward(&mut self, grad: &Mat) -> Mat;
+    fn forward(&mut self, input: Tensor2) -> Tensor2;
+    fn backward(&mut self, grad: Tensor2) -> Tensor2;
 }

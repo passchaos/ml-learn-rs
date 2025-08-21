@@ -1,11 +1,13 @@
+use burn_tensor::Bool;
+
 use crate::{
     math::stat::rand,
-    nn::{Float, Mat, layer::LayerWard},
+    nn::{Float, Tensor2, default_device, layer::LayerWard},
 };
 
 pub struct Dropout {
     ratio: Float,
-    mask: Option<Mat>,
+    mask: Option<Tensor2<Bool>>,
 }
 
 impl Dropout {
@@ -15,42 +17,44 @@ impl Dropout {
 }
 
 impl LayerWard for Dropout {
-    fn forward(&mut self, input: &Mat) -> Mat {
+    fn forward(&mut self, input: Tensor2) -> Tensor2 {
         // 这里注意使用的是均匀分布，如果使用标准正态分布，那么会有很大比例的权重值被置为0，那就是捣乱了
-        let mask =
-            rand::<_, _, Float>(input.raw_dim()).map(|x| if x < &self.ratio { 0.0 } else { 1.0 });
+        let mask1: burn_tensor::Tensor<_, _, burn_tensor::Float> = Tensor2::random(
+            input.shape(),
+            burn_tensor::Distribution::Default,
+            &default_device(),
+        );
 
-        let v = &mask * input;
+        let mask = mask1.lower_elem(self.ratio);
+        let v = input.mask_fill(mask.clone(), 0.0);
+
         self.mask = Some(mask);
 
         v
     }
 
-    fn backward(&mut self, grad: &Mat) -> Mat {
-        self.mask.as_ref().unwrap() * grad
+    fn backward(&mut self, grad: Tensor2) -> Tensor2 {
+        grad.mask_fill(self.mask.as_ref().unwrap().clone(), 0.0)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ndarray::arr2;
-
-    use crate::math::stat::rand;
-
     use super::*;
 
     #[test]
     fn test_dropout_forward() {
-        let rand_v = rand::<_, _, f32>((2, 5));
-        println!("rand v: {rand_v}");
-
         let mut dropout = Dropout::new(0.2);
-        let input = arr2(&[
-            [0.0, 0.2, 0.11, 0.13, 0.25],
-            [-0.02, 0.03, 0.23, 0.58, 0.19],
-        ]);
 
-        let output = dropout.forward(&input);
+        let input = Tensor2::from_data(
+            [
+                [0.0, 0.2, 0.11, 0.13, 0.25],
+                [-0.02, 0.03, 0.23, 0.58, 0.19],
+            ],
+            &default_device(),
+        );
+
+        let output = dropout.forward(input);
         println!("output: {output}");
     }
 }

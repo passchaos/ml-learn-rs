@@ -20,6 +20,11 @@ anyhow = { workspace = true }
 safetensors = { workspace = true }
 num = { workspace = true }
 
+burn-cubecl = { workspace = true }
+burn-fusion = { workspace = true }
+burn-tensor = { workspace = true }
+cubecl = { workspace = true }
+
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
 tools = { workspace = true }
