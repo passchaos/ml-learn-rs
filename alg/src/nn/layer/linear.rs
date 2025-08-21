@@ -34,7 +34,7 @@ impl Linear {
     ) -> Self {
         let weight = Tensor2::random(
             [input_size, output_size],
-            burn_tensor::Distribution::Default,
+            burn_tensor::Distribution::Normal(0.0, 1.0),
             &default_device(),
         );
 

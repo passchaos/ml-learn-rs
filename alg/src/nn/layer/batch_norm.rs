@@ -43,7 +43,7 @@ impl LayerWard for BatchNorm {
         let xc = input.clone() - mu.clone();
 
         let var = xc.clone().powi_scalar(2).mean_dim(0);
-        let std = (var.clone() + 1.0e-6).sqrt();
+        let std = (var.clone() + crate::nn::float_epsilon()).sqrt();
 
         let xn = xc.clone() / std.clone();
 
