@@ -1,7 +1,4 @@
-use crate::{
-    math::SoftmaxOpT,
-    nn::{Float, Tensor2},
-};
+use crate::nn::{Float, Tensor2};
 
 #[derive(Default)]
 pub struct SoftmaxWithLoss {
@@ -55,7 +52,7 @@ impl SoftmaxWithLoss {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use ndarray::{Array2, arr2, array};
+    use ndarray::arr2;
 
     use crate::nn::default_device;
 

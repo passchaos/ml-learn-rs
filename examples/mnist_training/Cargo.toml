@@ -20,6 +20,9 @@ mimalloc = { workspace = true }
 
 burn-tensor = { workspace = true }
 
+# [features]
+# default = ["wgpu"]
+
 
 [dev-dependencies]
 approx = { workspace = true }

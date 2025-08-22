@@ -1,9 +1,6 @@
 use burn_tensor::Bool;
 
-use crate::{
-    math::stat::rand,
-    nn::{Float, Tensor2, default_device, layer::LayerWard},
-};
+use crate::nn::{Float, Tensor2, default_device, layer::LayerWard};
 
 pub struct Dropout {
     ratio: Float,

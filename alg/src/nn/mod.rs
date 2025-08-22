@@ -1,13 +1,47 @@
-use burn_cubecl::CubeBackend;
-use burn_tensor::{DType, TensorData, backend::Backend};
-use cubecl::cuda::{CudaDevice, CudaRuntime};
+use burn_tensor::{DType, TensorData};
 use safetensors::View;
 
 type Float = f32;
 
-type Cuda<F = Float, I = i32> = burn_fusion::Fusion<CubeBackend<CudaRuntime, F, I, u8>>;
+#[cfg(feature = "alg-cuda")]
+mod dt {
+    pub type Device = cubecl::cuda::CudaDevice;
+    type Runtime = cubecl::cuda::CudaRuntime;
+    type BoolValue = u8;
 
-pub type Tensor2<K = burn_tensor::Float> = burn_tensor::Tensor<Cuda, 2, K>;
+    pub type Back<F = super::Float, I = i32> =
+        burn_fusion::Fusion<CubeBackend<dt::Runtime, F, I, dt::BoolValue>>;
+}
+
+#[cfg(feature = "alg-wgpu")]
+mod dt {
+    pub type Device = cubecl::wgpu::WgpuDevice;
+    type Runtime = cubecl::wgpu::WgpuRuntime;
+    type BoolValue = u32;
+
+    pub type Back<F = super::Float, I = i32> =
+        burn_fusion::Fusion<CubeBackend<dt::Runtime, F, I, dt::BoolValue>>;
+}
+
+#[cfg(not(any(feature = "alg-cuda", feature = "alg-wgpu")))]
+mod dt {
+    use burn_ndarray::NdArray;
+
+    pub type Device = burn_ndarray::NdArrayDevice;
+
+    pub type Back<F = super::Float, I = i32> = NdArray<F, I>;
+}
+
+pub type Tensor1<K = burn_tensor::Float> = burn_tensor::Tensor<dt::Back, 1, K>;
+pub type Tensor2<K = burn_tensor::Float> = burn_tensor::Tensor<dt::Back, 2, K>;
+
+pub fn default_device() -> dt::Device {
+    dt::Device::default()
+}
+
+pub fn float_epsilon() -> Float {
+    1.0e-5
+}
 
 #[derive(Debug)]
 pub struct Tensor2Data(TensorData);
@@ -32,15 +66,6 @@ impl Tensor2Data {
     }
 }
 
-pub type Tensor1<K = burn_tensor::Float> = burn_tensor::Tensor<Cuda, 1, K>;
-pub fn float_epsilon() -> Float {
-    1.0e-5
-}
-
-pub fn default_device() -> CudaDevice {
-    CudaDevice::default()
-}
-
 impl View for Tensor2Data {
     fn dtype(&self) -> safetensors::Dtype {
         match self.0.dtype {
@@ -53,7 +78,7 @@ impl View for Tensor2Data {
         &self.0.shape
     }
 
-    fn data(&self) -> std::borrow::Cow<[u8]> {
+    fn data(&self) -> std::borrow::Cow<'_, [u8]> {
         self.0.as_bytes().into()
     }
 

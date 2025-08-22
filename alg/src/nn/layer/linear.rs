@@ -1,14 +1,7 @@
-use std::collections::HashMap;
-
-use ndarray::Axis;
-
-use crate::{
-    math::stat::randn,
-    nn::{
-        Float, Tensor2, Tensor2Data, default_device,
-        layer::LayerWard,
-        optimizer::{Optimizer, OptimizerOpT},
-    },
+use crate::nn::{
+    Float, Tensor2, default_device,
+    layer::LayerWard,
+    optimizer::{Optimizer, OptimizerOpT},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -147,8 +140,6 @@ impl LayerWard for Linear {
 
 #[cfg(test)]
 mod tests {
-    use burn_tensor::TensorData;
-
     use crate::nn::{Tensor2, Tensor2Data, default_device};
 
     #[test]
@@ -188,7 +179,7 @@ mod tests {
 
             let res = input.clone().matmul(weight) + bias;
 
-            if res.contains_nan().into_scalar() == 1 {
+            if res.contains_nan().into_scalar() as u32 > 0 {
                 panic!("NaN detected");
             }
         }

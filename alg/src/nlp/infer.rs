@@ -1,4 +1,4 @@
-use ndarray::{Array, Array1, Array2, Array3, Axis, arr1, arr2, stack};
+use ndarray::{Array1, Array2, Array3, Axis, stack};
 
 pub fn word_id_to_one_hot(id: usize, vocab_size: usize) -> Array1<usize> {
     let mut one_hot = Array1::zeros(vocab_size);

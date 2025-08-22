@@ -5,13 +5,17 @@ members = ["alg", "tools", "examples/*"]
 [workspace.dependencies]
 alg = { path = "alg" }
 tools = { path = "tools" }
-ndarray = { version = "*", features = ["blas"] }
+ndarray = { version = "*", features = [
+    "blas",
+    "rayon",
+    "matrixmultiply-threading",
+] }
 blas-src = { version = "*", features = ["openblas"] }
 ndarray-linalg = { version = "*" }
-egui = { version = "0.32.1" }
-eframe = { version = "0.32.1" }
-egui_extras = { version = "0.32.1", features = ["all_loaders", "svg_text"] }
-egui_plot = { version = "0.33.0" }
+egui = { version = "*" }
+eframe = { version = "*" }
+egui_extras = { version = "*", features = ["all_loaders", "svg_text"] }
+egui_plot = { version = "*" }
 md-5 = "*"
 hex = "*"
 layout-rs = "*"
@@ -21,7 +25,7 @@ tracing-subscriber = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 regex = "*"
-rand = { version = "0.9.2", features = ["alloc"] }
+rand = { version = "*", features = ["alloc"] }
 rand_distr = "*"
 num = "*"
 approx = "*"
@@ -33,9 +37,9 @@ mimalloc = "*"
 
 burn-cubecl = "*"
 burn-fusion = "*"
-burn-tensor = { version = "*", features = ["cubecl-wgpu", "cubecl-cuda"] }
-cubecl = { version = "*", features = ["wgpu", "cuda"] }
-bincode = { version = "*", features = ["serde"] }
+burn-tensor = { version = "*", default-features = false }
+cubecl = { version = "*", default-features = false }
+burn-ndarray = { version = "*" }
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 #
 

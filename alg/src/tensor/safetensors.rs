@@ -18,7 +18,7 @@ impl<'data> Load for TensorView<'data> {
             safetensors::Dtype::F32 => {
                 let mut c_data = Cursor::new(self.data());
 
-                let count = self.data_len() / dtype.size();
+                let count = self.data_len() / dtype.bitsize() / 8;
 
                 for _ in 0..count {
                     let d = c_data.read_f32::<LittleEndian>()?;

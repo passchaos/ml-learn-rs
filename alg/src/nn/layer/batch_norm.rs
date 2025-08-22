@@ -1,7 +1,5 @@
-use ndarray::Axis;
-
 use crate::nn::{
-    Float, Tensor1, Tensor2, default_device, float_epsilon,
+    Float, Tensor2, default_device,
     layer::LayerWard,
     optimizer::{Optimizer, OptimizerOpT},
 };
@@ -117,7 +115,7 @@ mod tests {
     use crate::nn::optimizer::Sgd;
 
     use super::*;
-    use ndarray::{Array2, Axis, arr2};
+    use ndarray::{Axis, arr2};
 
     #[test]
     fn test_ndarray_axis() {

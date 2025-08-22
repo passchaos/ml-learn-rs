@@ -4,31 +4,15 @@ use egui::mutex::RwLock;
 // use rand::seq::IndexedRandom;
 use rand::{Rng, prelude::IndexedRandom};
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::format,
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use alg::{
-    math::{DigitalRecognition, normalize::NormalizeTransform, one_hot::OneHotTransform},
-    nn::{
-        Tensor1, Tensor2, default_device,
-        layer::{
-            Layer, LayerWard,
-            dropout::Dropout,
-            linear::{Linear, WeightInit},
-            relu::Relu,
-            softmax_loss::SoftmaxWithLoss,
-        },
-        model::Mlp,
-        optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
-    },
-    tensor::Tensor,
+use alg::nn::{
+    Tensor1, Tensor2, default_device,
+    layer::linear::WeightInit,
+    model::Mlp,
+    optimizer::{Adam, Optimizer},
 };
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array2, Axis, s};
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -92,7 +76,7 @@ fn model_train<R: Rng>(
         // let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
         let t_batch = t_train.clone().select(0, indices.clone());
 
-        let loss = model.loss(&x_batch, &t_batch);
+        let _loss = model.loss(&x_batch, &t_batch);
         model.backward();
 
         let loss = model.loss(x_test, t_test);
@@ -129,7 +113,7 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
     // let x_train = x_train.select(Axis(0), &[0..1000]);
     // let t_train = t_train.select(Axis(0), &[0..1000]);
 
-    let iter_per_epoch = std::cmp::max(train_size / batch_size as usize, 1);
+    // let iter_per_epoch = std::cmp::max(train_size / batch_size as usize, 1);
 
     let mut rng = rand::rng();
 

@@ -23,8 +23,14 @@ num = { workspace = true }
 burn-cubecl = { workspace = true }
 burn-fusion = { workspace = true }
 burn-tensor = { workspace = true }
+burn-ndarray = { workspace = true }
 cubecl = { workspace = true }
-bincode = { workspace = true }
+
+[features]
+alg-wgpu = ["burn-tensor/cubecl-wgpu", "cubecl/wgpu"]
+alg-cuda = []
+# alg-cuda = ["burn-tensor/cubecl-cuda", "cubecl/cuda"]
+
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
