@@ -72,9 +72,9 @@ impl Linear {
 
 impl LayerWard for Linear {
     fn forward(&mut self, input: Tensor2) -> Tensor2 {
-        if input.clone().contains_nan().into_scalar() == 1 {
-            println!("linear meet nan value");
-        }
+        // if input.clone().contains_nan().into_scalar() == 1 {
+        //     println!("linear meet nan value");
+        // }
 
         self.x = Some(input.clone());
 
@@ -84,41 +84,41 @@ impl LayerWard for Linear {
             input.matmul(self.weight.clone())
         };
 
-        if res.clone().contains_nan().into_scalar() == 1 {
-            let new_res = self.x.as_ref().unwrap().clone().matmul(self.weight.clone())
-                + self.bias.as_ref().unwrap().clone();
-            let mut f = std::fs::File::create("abc.bin").unwrap();
+        // if res.clone().contains_nan().into_scalar() == 1 {
+        //     let new_res = self.x.as_ref().unwrap().clone().matmul(self.weight.clone())
+        //         + self.bias.as_ref().unwrap().clone();
+        //     let mut f = std::fs::File::create("abc.bin").unwrap();
 
-            let input_sum = self.x.as_ref().unwrap().clone().sum().into_scalar();
+        //     let input_sum = self.x.as_ref().unwrap().clone().sum().into_scalar();
 
-            let mut contents = HashMap::new();
-            contents.insert(
-                "input",
-                Tensor2Data::from_tensor(self.x.as_ref().unwrap().clone()),
-            );
-            contents.insert("weight", Tensor2Data::from_tensor(self.weight.clone()));
-            contents.insert(
-                "bias",
-                Tensor2Data::from_tensor(self.bias.as_ref().unwrap().clone()),
-            );
+        //     let mut contents = HashMap::new();
+        //     contents.insert(
+        //         "input",
+        //         Tensor2Data::from_tensor(self.x.as_ref().unwrap().clone()),
+        //     );
+        //     contents.insert("weight", Tensor2Data::from_tensor(self.weight.clone()));
+        //     contents.insert(
+        //         "bias",
+        //         Tensor2Data::from_tensor(self.bias.as_ref().unwrap().clone()),
+        //     );
 
-            println!("input_sum= {input_sum} res= {res} new_res= {new_res}");
-            println!("contents: {contents:?}");
-            let path = std::path::Path::new("abc.safetensors");
+        //     println!("input_sum= {input_sum} res= {res} new_res= {new_res}");
+        //     println!("contents: {contents:?}");
+        //     let path = std::path::Path::new("abc.safetensors");
 
-            std::fs::remove_file(path);
-            safetensors::serialize_to_file(contents, None, path).unwrap();
+        //     std::fs::remove_file(path);
+        //     safetensors::serialize_to_file(contents, None, path).unwrap();
 
-            println!("linear output nan value");
-            println!(
-                "input: {} weight= {} bias= {}",
-                self.x.as_ref().unwrap(),
-                self.weight,
-                self.bias.as_ref().unwrap()
-            );
+        //     println!("linear output nan value");
+        //     println!(
+        //         "input: {} weight= {} bias= {}",
+        //         self.x.as_ref().unwrap(),
+        //         self.weight,
+        //         self.bias.as_ref().unwrap()
+        //     );
 
-            panic!("meet nan first");
-        }
+        //     panic!("meet nan first");
+        // }
 
         res
     }
