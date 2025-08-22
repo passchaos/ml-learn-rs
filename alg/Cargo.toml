@@ -28,8 +28,8 @@ cubecl = { workspace = true }
 
 [features]
 alg-wgpu = ["burn-tensor/cubecl-wgpu", "cubecl/wgpu"]
-alg-cuda = []
-# alg-cuda = ["burn-tensor/cubecl-cuda", "cubecl/cuda"]
+# alg-cuda = []
+alg-cuda = ["burn-tensor/cubecl-cuda", "cubecl/cuda"]
 
 
 [dev-dependencies]

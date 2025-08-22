@@ -5,22 +5,26 @@ type Float = f32;
 
 #[cfg(feature = "alg-cuda")]
 mod dt {
+    use burn_cubecl::CubeBackend;
+
     pub type Device = cubecl::cuda::CudaDevice;
     type Runtime = cubecl::cuda::CudaRuntime;
     type BoolValue = u8;
 
     pub type Back<F = super::Float, I = i32> =
-        burn_fusion::Fusion<CubeBackend<dt::Runtime, F, I, dt::BoolValue>>;
+        burn_fusion::Fusion<CubeBackend<Runtime, F, I, BoolValue>>;
 }
 
 #[cfg(feature = "alg-wgpu")]
 mod dt {
+    use burn_cubecl::CubeBackend;
+
     pub type Device = cubecl::wgpu::WgpuDevice;
     type Runtime = cubecl::wgpu::WgpuRuntime;
     type BoolValue = u32;
 
     pub type Back<F = super::Float, I = i32> =
-        burn_fusion::Fusion<CubeBackend<dt::Runtime, F, I, dt::BoolValue>>;
+        burn_fusion::Fusion<CubeBackend<Runtime, F, I, BoolValue>>;
 }
 
 #[cfg(not(any(feature = "alg-cuda", feature = "alg-wgpu")))]
