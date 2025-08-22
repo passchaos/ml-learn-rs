@@ -9,6 +9,10 @@ pub struct Relu {
 
 impl LayerWard for Relu {
     fn forward(&mut self, x: Tensor2) -> Tensor2 {
+        if x.clone().contains_nan().into_scalar() == 1 {
+            println!("relu meet nan value");
+        }
+
         self.mask = Some(x.clone().lower_equal_elem(0.0));
 
         let out = x.clamp_min(0.0);

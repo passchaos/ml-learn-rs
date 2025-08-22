@@ -37,6 +37,10 @@ impl BatchNorm {
 
 impl LayerWard for BatchNorm {
     fn forward(&mut self, input: crate::nn::Tensor2) -> crate::nn::Tensor2 {
+        if input.clone().contains_nan().into_scalar() == 1 {
+            println!("batch norm meet nan value");
+        }
+
         let mu = input.clone().mean_dim(0);
         // let mu = input.mean_axis(Axis(0)).unwrap();
 

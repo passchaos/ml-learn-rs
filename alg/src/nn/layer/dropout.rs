@@ -18,6 +18,10 @@ impl Dropout {
 
 impl LayerWard for Dropout {
     fn forward(&mut self, input: Tensor2) -> Tensor2 {
+        if input.clone().contains_nan().into_scalar() == 1 {
+            println!("dropout meet nan value");
+        }
+
         // 这里注意使用的是均匀分布，如果使用标准正态分布，那么会有很大比例的权重值被置为0，那就是捣乱了
         let mask1: burn_tensor::Tensor<_, _, burn_tensor::Float> = Tensor2::random(
             input.shape(),

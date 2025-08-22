@@ -35,12 +35,13 @@ burn-cubecl = "*"
 burn-fusion = "*"
 burn-tensor = { version = "*", features = ["cubecl-wgpu", "cubecl-cuda"] }
 cubecl = { version = "*", features = ["wgpu", "cuda"] }
+bincode = { version = "*", features = ["serde"] }
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 #
 
-[profile.release]
-codegen-units = 1
-lto = "fat"
+# [profile.release]
+# codegen-units = 1
+# lto = "fat"
 
 
 [profile.dev.package."*"]

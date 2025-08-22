@@ -12,9 +12,15 @@ pub struct SoftmaxWithLoss {
 fn cross_entropy_error(y: Tensor2, t: Tensor2) -> Float {
     let batch_size = y.dims()[0];
 
+    // println!("orig y: {y}");
     let y = (y + crate::nn::float_epsilon()).log();
 
-    println!("y: {y} t: {t}");
+    // println!("y: {y} t: {t}");
+    let res = y.clone().contains_nan().into_scalar();
+    if res == 1 {
+        panic!("meet nan data");
+    }
+
     let res = -(y * t).sum() / batch_size as Float;
 
     res.into_scalar()
@@ -22,9 +28,16 @@ fn cross_entropy_error(y: Tensor2, t: Tensor2) -> Float {
 
 impl SoftmaxWithLoss {
     pub fn forward(&mut self, x: Tensor2, t: Tensor2) -> Float {
+        if x.clone().contains_nan().into_scalar() == 1 {
+            println!("softmax loss meet nan");
+        }
+
         self.t = Some(t.clone());
 
+        // println!("before softmax: {x}");
         let y = burn_tensor::activation::softmax(x, 1);
+
+        // println!("after softmax: {y}");
         self.y = Some(y.clone());
 
         cross_entropy_error(y, t.clone())

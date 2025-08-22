@@ -11,12 +11,12 @@ use crate::nn::{
     optimizer::Optimizer,
 };
 
-pub struct Model {
+pub struct Mlp {
     layers: Vec<Layer>,
     out: SoftmaxWithLoss,
 }
 
-impl Model {
+impl Mlp {
     pub fn new(
         input_size: usize,
         hidden_sizes: &[usize],

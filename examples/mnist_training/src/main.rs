@@ -22,7 +22,7 @@ use alg::{
             relu::Relu,
             softmax_loss::SoftmaxWithLoss,
         },
-        model::Model,
+        model::Mlp,
         optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
     },
     tensor::Tensor,
@@ -67,7 +67,7 @@ fn model_train<R: Rng>(
     batch_norm_momentum: Option<f32>,
     dropout_ratio: Option<f32>,
 ) {
-    let mut model = Model::new(
+    let mut model = Mlp::new(
         784,
         &[100, 100],
         10,
