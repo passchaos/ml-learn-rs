@@ -1,3 +1,5 @@
+extern crate blas_src;
+
 use egui::Color32;
 use egui_plot::{Legend, PlotPoints, Points};
 use ndarray::{Array1, Array2, array, s};
