@@ -13,9 +13,8 @@ fn cross_entropy_error(y: Tensor2, t: Tensor2) -> Float {
     let y = (y + crate::nn::float_epsilon()).log();
 
     // println!("y: {y} t: {t}");
-    // let res = y.clone().contains_nan().into_scalar();
-    // if res == 1 {
-    //     panic!("meet nan data");
+    // if y.clone().contains_nan().into_scalar() == 1 {
+    //     println!("sl cee meet nan value");
     // }
 
     let res = -(y * t).sum() / batch_size as Float;

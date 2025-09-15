@@ -2776,6 +2776,7 @@ name = "knn_plot"
 version = "0.1.0"
 dependencies = [
  "alg",
+ "blas-src",
  "eframe",
  "egui",
  "egui_plot",

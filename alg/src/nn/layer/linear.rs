@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use crate::nn::{
-    Float, Tensor2, default_device,
+    Float, Tensor2, Tensor2Data, default_device,
     layer::LayerWard,
     optimizer::{Optimizer, OptimizerOpT},
 };
@@ -94,9 +96,12 @@ impl LayerWard for Linear {
         //         "bias",
         //         Tensor2Data::from_tensor(self.bias.as_ref().unwrap().clone()),
         //     );
+        //     contents.insert("res", Tensor2Data::from_tensor(res.clone()));
+        //     contents.insert("new_res", Tensor2Data::from_tensor(new_res.clone()));
 
         //     println!("input_sum= {input_sum} res= {res} new_res= {new_res}");
         //     println!("contents: {contents:?}");
+
         //     let path = std::path::Path::new("abc.safetensors");
 
         //     std::fs::remove_file(path);

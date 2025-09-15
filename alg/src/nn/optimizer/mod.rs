@@ -193,7 +193,7 @@ impl OptimizerOpT for Adam {
         *v = v.clone() + v_value;
 
         let v1 = m.clone() * lr_t;
-        let v2 = v.clone().sqrt() - crate::nn::float_epsilon();
+        let v2 = v.clone().sqrt() + crate::nn::float_epsilon();
         *param = param.clone() - v1 / v2;
     }
 }
