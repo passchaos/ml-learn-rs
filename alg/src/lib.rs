@@ -1,3 +1,5 @@
+use cubecl::config::autotune::AutotuneConfig;
+
 extern crate blas_src;
 
 pub mod bayes;
@@ -9,6 +11,17 @@ pub mod nlp;
 pub mod nn;
 pub mod tensor;
 pub mod util;
+
+pub fn enable_cubecl_opt() {
+    let config = cubecl::config::GlobalConfig {
+        autotune: AutotuneConfig {
+            level: cubecl::config::autotune::AutotuneLevel::Full,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    cubecl::config::GlobalConfig::set(config);
+}
 
 #[cfg(test)]
 mod tests {

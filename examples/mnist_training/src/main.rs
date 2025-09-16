@@ -68,9 +68,11 @@ fn model_train<R: Rng>(
     // mimalloc: 2.05s
     // remove println: 1.99s
     for i in 0..iters_num {
+        let begin = Instant::now();
         let batch_mask: Vec<_> = sample.choose_multiple(rng, batch_size).cloned().collect();
 
         let indices = Tensor1::from_data(batch_mask.as_slice(), &default_device());
+        let get_data_ins = Instant::now();
 
         let x_batch = x_train.clone().select(0, indices.clone());
         // let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
@@ -79,7 +81,17 @@ fn model_train<R: Rng>(
         let _loss = model.loss(&x_batch, &t_batch);
         model.backward();
 
+        let backward_ins = Instant::now();
+
         let loss = model.loss(x_test, t_test);
+
+        let all_loss_ins = Instant::now();
+        println!(
+            "get data= {:?} backward= {:?} all_loss= {:?}",
+            get_data_ins - begin,
+            backward_ins - get_data_ins,
+            all_loss_ins - backward_ins,
+        );
         // println!("elapsed: 1_1= {elapsed11} 1= {elapsed1}, 2= {elapsed2}, 3= {elapsed3}");
 
         println!("idx: {i} loss: {loss}");
@@ -207,6 +219,8 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
 }
 
 fn main() {
+    alg::enable_cubecl_opt();
+
     let losses_map = Arc::new(RwLock::new(HashMap::new()));
     let app = LossApp {
         losses_map: losses_map.clone(),
