@@ -39,7 +39,7 @@ impl BatchNorm {
 
 impl BatchNorm {
     fn forward(&mut self, input: &Mat) -> Mat {
-        let mu = input.mean_axis(Axis(0)).unwrap();
+        let mu = input.mean_axis(0).unwrap();
 
         let xc = input - &mu;
         let var = xc.pow2().mean_axis(Axis(0)).unwrap();
