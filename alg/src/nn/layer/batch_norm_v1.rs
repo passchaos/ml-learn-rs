@@ -42,7 +42,7 @@ impl BatchNorm {
         let mu = input.mean_axis(0).unwrap();
 
         let xc = input - &mu;
-        let var = xc.pow2().mean_axis(Axis(0)).unwrap();
+        let var = xc.pow2().mean_axis(0).unwrap();
         let std = (&var + 1.0e-6).sqrt();
 
         let xn = &xc / &std;
