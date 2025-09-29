@@ -1,7 +1,4 @@
-use crate::{
-    math::stat::rand,
-    nn::{Float, Mat, layer::LayerWard},
-};
+use crate::nn::{Float, Mat, layer::LayerWard};
 
 pub struct Dropout {
     ratio: Float,
@@ -34,8 +31,6 @@ impl LayerWard for Dropout {
 #[cfg(test)]
 mod tests {
     use ndarray::arr2;
-
-    use crate::math::stat::rand;
 
     use super::*;
 

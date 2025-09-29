@@ -5,8 +5,7 @@ members = ["alg", "tools", "examples/*"]
 [workspace.dependencies]
 alg = { path = "alg" }
 tools = { path = "tools" }
-ndarray = { version = "*", features = ["blas"] }
-blas-src = { version = "*", features = ["openblas"] }
+ndarray = { version = "*" }
 ndarray-linalg = { version = "*" }
 egui = { version = "0.32.1" }
 eframe = { version = "0.32.1" }
@@ -30,6 +29,7 @@ image = "*"
 safetensors = "*"
 memmap2 = "*"
 mimalloc = "*"
+vectra = { path = "../vectra" }
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 #
 

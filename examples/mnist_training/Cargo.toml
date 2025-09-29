@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 alg = { workspace = true }
 ndarray = { workspace = true }
-blas-src = { workspace = true }
 eframe = { workspace = true }
 egui = { workspace = true }
 egui_plot = { workspace = true }

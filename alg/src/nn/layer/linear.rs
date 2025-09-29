@@ -1,12 +1,9 @@
 use ndarray::Axis;
 
-use crate::{
-    math::stat::randn,
-    nn::{
-        Float, Mat,
-        layer::LayerWard,
-        optimizer::{Optimizer, OptimizerOpT},
-    },
+use crate::nn::{
+    Float, Mat,
+    layer::LayerWard,
+    optimizer::{Optimizer, OptimizerOpT},
 };
 
 #[derive(Clone, Copy, Debug)]
