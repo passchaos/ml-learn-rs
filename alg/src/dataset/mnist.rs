@@ -1,9 +1,9 @@
 use std::{io::Cursor, path::Path};
 
 use byteorder::{BigEndian, ReadBytesExt};
-use ndarray::{Array1, Array2};
+use vectra::prelude::*;
 
-pub fn load_images<P: AsRef<Path>>(path: P) -> Array2<u8> {
+pub fn load_images<P: AsRef<Path>>(path: P) -> Array<2, u8> {
     let data = std::fs::read(path).unwrap();
 
     let mut data_r = Cursor::new(data);
@@ -22,10 +22,10 @@ pub fn load_images<P: AsRef<Path>>(path: P) -> Array2<u8> {
     let data = data_r.into_inner().split_off(16);
     println!("data len: {} length= {}", data.len(), samples * rows * cols);
 
-    Array2::from_shape_vec((samples as usize, (rows * cols) as usize), data).unwrap()
+    Array::from_vec(data, [samples as usize, (rows * cols) as usize])
 }
 
-pub fn load_labels<P: AsRef<Path>>(p: P) -> Array1<u8> {
+pub fn load_labels<P: AsRef<Path>>(p: P) -> Array<1, u8> {
     let data = std::fs::read(p).unwrap();
 
     let mut data_r = Cursor::new(data);
@@ -40,15 +40,12 @@ pub fn load_labels<P: AsRef<Path>>(p: P) -> Array1<u8> {
     // 剩下的是数据字段，实际长度为 samples
     let data = data_r.into_inner().split_off(8);
 
-    Array1::from_vec(data)
+    Array::from(data)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        dataset::mnist::{load_images, load_labels},
-        math::{DigitalRecognition, one_hot::OneHotTransform},
-    };
+    use crate::dataset::mnist::{load_images, load_labels};
 
     #[test]
     fn test_mnist_data_parse() {
@@ -57,15 +54,13 @@ mod tests {
             .join("Work/mnist/train-images.idx3-ubyte");
 
         let image_data = load_images(train_data_path);
+        println!("shape: {:?}", image_data.shape());
 
         let train_label_path = std::env::home_dir()
             .unwrap()
             .join("Work/mnist/train-labels.idx1-ubyte");
         let image_label = load_labels(train_label_path);
-
-        let oneshoted_labels = DigitalRecognition::one_hot(&image_label);
-        println!(
-            "image_data= {image_data:?} image_label= {image_label:?} oneshoted_labels= {oneshoted_labels:?}"
-        );
+        let one_hot_labels = image_label.one_hot::<i32>(10);
+        println!("one_hot labels: {one_hot_labels:?}");
     }
 }

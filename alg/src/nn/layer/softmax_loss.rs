@@ -1,5 +1,5 @@
 use crate::{
-    math::{SoftmaxOpt, loss::cross_entropy_error},
+    math::{ActivationFn, LossFn},
     nn::{Ft, Mat},
 };
 
@@ -16,8 +16,7 @@ impl SoftmaxWithLoss {
         let y = x.softmax();
         self.y = Some(y.clone());
 
-        // cross_entropy_error(y, t.clone())
-        todo!()
+        y.cross_entropy_error(t)
     }
 
     pub fn backward(&mut self) -> Mat {

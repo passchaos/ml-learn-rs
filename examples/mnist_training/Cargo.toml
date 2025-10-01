@@ -16,6 +16,7 @@ memmap2 = { workspace = true }
 rand = { workspace = true }
 approx = { workspace = true }
 mimalloc = { workspace = true }
+vectra = { workspace = true }
 
 
 [dev-dependencies]

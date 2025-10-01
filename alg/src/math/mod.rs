@@ -1,19 +1,12 @@
-use std::ops::{AddAssign, DivAssign, MulAssign, Sub, SubAssign};
+use std::ops::{AddAssign, MulAssign};
 
 use num::{Float, pow::Pow, traits::float::TotalOrder};
 use vectra::prelude::Array;
 pub mod autodiff;
 pub mod loss;
-pub mod normalize;
-pub mod one_hot;
-
-pub struct DigitalRecognition;
-
-pub trait SoftmaxOpt {
-    fn softmax(&self) -> Self;
-}
 
 pub trait ActivationFn {
+    fn softmax(&self) -> Self;
     fn sigmoid(&self) -> Self;
     fn relu(&self) -> Self;
 }
@@ -24,8 +17,8 @@ pub trait LossFn {
     fn cross_entropy_error(&self, y: &Self) -> Self::Output;
 }
 
-impl<const D: usize, T: Float + AddAssign + MulAssign + Pow<T, Output = T>> ActivationFn
-    for Array<D, T>
+impl<const D: usize, T: Float + TotalOrder + Default + AddAssign + MulAssign + Pow<T, Output = T>>
+    ActivationFn for Array<D, T>
 {
     fn sigmoid(&self) -> Self {
         self.clone()
@@ -38,37 +31,37 @@ impl<const D: usize, T: Float + AddAssign + MulAssign + Pow<T, Output = T>> Acti
     fn relu(&self) -> Self {
         self.map(|x| x.max(T::zero()))
     }
-}
 
-impl<const D: usize, T: TotalOrder + Float + Default> SoftmaxOpt for Array<D, T> {
     fn softmax(&self) -> Self {
-        let a = self.max_axis(D - 1);
+        let a = self.max_axis((D - 1) as isize);
         let a = (self - &a).exp();
-        let a_t = a.sum_axis(D - 1);
+        let a_t = a.sum_axis((D - 1) as isize);
 
         &a / &a_t
     }
 }
 
-// impl<const D: usize, T: Float + Default> LossFn for Array<D, T> {
-//     type Output = T;
+impl<const D: usize, T: Float + Default> LossFn for Array<D, T> {
+    type Output = T;
 
-//     fn mean_squared_error(&self, y: &Self) -> Self::Output {
-//         (self - y).pow2().sum() / (T::one() + T::one())
-//     }
+    fn mean_squared_error(&self, y: &Self) -> Self::Output {
+        (self - y).pow2().sum() / (T::one() + T::one())
+    }
 
-//     fn cross_entropy_error(&self, y: &Self) -> Self::Output {
-//         let eps = T::epsilon();
-//         let log = self.map(|x| x.max(eps).ln());
-//         (&log - y).sum_axis(D - 1) / T::from(D - 1).unwrap()
-//     }
-// }
+    fn cross_entropy_error(&self, y: &Self) -> Self::Output {
+        let eps = T::epsilon();
+        let log = self.map(|x| x.max(eps).ln());
+
+        (&log * y).sum_axis(-1).mean().neg()
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
+    use vectra::prelude::Array;
 
-    use super::{normalize::NormalizeTransform, *};
+    use crate::math::ActivationFn;
 
     #[test]
     fn test_softmax() {

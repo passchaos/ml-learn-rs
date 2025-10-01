@@ -1,5 +1,5 @@
 use crate::nn::{
-    Ft, Mat, float_epsilon,
+    Ft, Mat,
     layer::LayerWard,
     optimizer::{Optimizer, OptimizerOpT},
 };

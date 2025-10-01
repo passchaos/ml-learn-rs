@@ -17,7 +17,7 @@ impl LayerWard for Sigmoid {
         let mut dx = grad.clone();
 
         dx.multi_iter_mut(|idx, item| {
-            let y = self.out.as_ref().unwrap()[idx];
+            let y = self.out.as_ref().unwrap()[idx.map(|a| a as isize)];
 
             *item = *item * (1.0 - y) * y;
         });

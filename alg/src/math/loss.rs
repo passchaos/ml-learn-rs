@@ -21,7 +21,7 @@ pub fn cross_entropy_error<T: NdFloat + From<f32>, D: Dimension>(
 
     let batch_size = y.shape()[0] as f32;
 
-    let y1 = y.mapv(|a| (a + delta.into()));
+    let y1 = y.mapv(|a| a + delta.into());
     let y1 = y1.ln();
 
     let mut v1 = t * y1;

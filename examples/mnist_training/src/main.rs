@@ -1,8 +1,8 @@
-extern crate blas_src;
-
 use egui::mutex::RwLock;
-// use rand::seq::IndexedRandom;
-use rand::{Rng, prelude::IndexedRandom};
+use rand::{
+    Rng,
+    seq::{IndexedRandom, SliceRandom},
+};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -11,44 +11,41 @@ use std::{
     time::Instant,
 };
 
-use alg::{
-    math::{DigitalRecognition, normalize::NormalizeTransform, one_hot::OneHotTransform},
-    nn::{
-        layer::{
-            Layer, LayerWard,
-            dropout::Dropout,
-            linear::{Linear, WeightInit},
-            relu::Relu,
-            softmax_loss::SoftmaxWithLoss,
-        },
-        model::Model,
-        optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
+use alg::nn::{
+    layer::{
+        Layer, LayerWard,
+        dropout::Dropout,
+        linear::{Linear, WeightInit},
+        relu::Relu,
+        softmax_loss::SoftmaxWithLoss,
     },
+    model::Model,
+    optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
 };
 use egui_plot::{Legend, PlotPoints, Points};
-use ndarray::{Array2, Axis, s};
+use vectra::prelude::*;
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
+fn load_mnist() -> (
+    (Array<2, f32>, Array<2, f32>),
+    (Array<2, f32>, Array<2, f32>),
+) {
     let mnist_dir = std::env::home_dir().unwrap().join("Work/mnist");
 
     let train_data_path = mnist_dir.join("train-images.idx3-ubyte");
-    let train_data = alg::dataset::mnist::load_images(train_data_path);
-    let train_data = DigitalRecognition::normalize(&train_data);
+    let train_data =
+        alg::dataset::mnist::load_images(train_data_path).into_map(|v| v as f32 / 255.0);
 
     let label_data_path = mnist_dir.join("train-labels.idx1-ubyte");
-    let train_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let train_labels = DigitalRecognition::one_hot(&train_labels);
+    let train_labels = alg::dataset::mnist::load_labels(label_data_path).one_hot(10);
 
     let test_data_path = mnist_dir.join("t10k-images.idx3-ubyte");
-    let test_data = alg::dataset::mnist::load_images(test_data_path);
-    let test_data = DigitalRecognition::normalize(&test_data);
+    let test_data = alg::dataset::mnist::load_images(test_data_path).into_map(|v| v as f32 / 255.0);
 
     let label_data_path = mnist_dir.join("t10k-labels.idx1-ubyte");
-    let test_labels = alg::dataset::mnist::load_labels(label_data_path);
-    let test_labels = DigitalRecognition::one_hot(&test_labels);
+    let test_labels = alg::dataset::mnist::load_labels(label_data_path).one_hot(10);
 
     ((train_data, train_labels), (test_data, test_labels))
 }
@@ -56,10 +53,10 @@ fn load_mnist() -> ((Array2<f32>, Array2<f32>), (Array2<f32>, Array2<f32>)) {
 fn model_train<R: Rng>(
     losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>,
     model_name: &str,
-    x_train: &Array2<f32>,
-    t_train: &Array2<f32>,
-    x_test: &Array2<f32>,
-    t_test: &Array2<f32>,
+    x_train: &Array<2, f32>,
+    t_train: &Array<2, f32>,
+    x_test: &Array<2, f32>,
+    t_test: &Array<2, f32>,
     iters_num: i32,
     batch_size: usize,
     sample: &[usize],
@@ -86,15 +83,31 @@ fn model_train<R: Rng>(
     // mimalloc: 2.05s
     // remove println: 1.99s
     for i in 0..iters_num {
+        let begin = Instant::now();
         let batch_mask: Vec<_> = sample.choose_multiple(rng, batch_size).cloned().collect();
 
-        let x_batch = x_train.select(Axis(0), batch_mask.as_slice());
-        let t_batch = t_train.select(Axis(0), batch_mask.as_slice());
+        let ts1 = Instant::now();
+
+        let x_batch = x_train.select(0, batch_mask.as_slice());
+        let t_batch = t_train.select(0, batch_mask.as_slice());
+
+        let ts2 = Instant::now();
 
         let loss = model.loss(&x_batch, &t_batch);
+
+        let ts3 = Instant::now();
         model.backward();
 
-        let loss = model.loss(x_test, t_test);
+        let ts4 = Instant::now();
+
+        // let loss = model.loss(x_test, t_test);
+        println!(
+            "elapsed info: ts1= {:?} ts2= {:?} ts3= {:?} ts4= {:?}",
+            ts1 - begin,
+            ts2 - ts1,
+            ts3 - ts2,
+            ts4 - ts3
+        );
         // println!("elapsed: 1_1= {elapsed11} 1= {elapsed1}, 2= {elapsed2}, 3= {elapsed3}");
 
         println!("idx: {i} loss: {loss}");

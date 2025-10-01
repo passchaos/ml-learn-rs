@@ -18,7 +18,7 @@ impl LayerWard for Relu {
         let mut out = grad.clone();
 
         out.multi_iter_mut(|idx, item| {
-            let v = self.mask.as_ref().unwrap()[idx];
+            let v = self.mask.as_ref().unwrap()[idx.map(|a| a as isize)];
 
             if v {
                 *item = 0.0;
