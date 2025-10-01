@@ -7,9 +7,9 @@ pub struct Relu {
 
 impl LayerWard for Relu {
     fn forward(&mut self, x: &Mat) -> Mat {
-        self.mask = Some(x.mapv(|a| a <= 0.0));
+        self.mask = Some(x.map(|&a| a <= 0.0));
 
-        let out = x.mapv(|a| if a > 0.0 { a } else { 0.0 });
+        let out = x.map(|&a| if a > 0.0 { a } else { 0.0 });
 
         out
     }
@@ -17,13 +17,13 @@ impl LayerWard for Relu {
     fn backward(&mut self, grad: &Mat) -> Mat {
         let mut out = grad.clone();
 
-        for (idx, a) in out.indexed_iter_mut() {
+        out.multi_iter_mut(|idx, item| {
             let v = self.mask.as_ref().unwrap()[idx];
 
             if v {
-                *a = 0.0;
+                *item = 0.0;
             }
-        }
+        });
 
         out
     }

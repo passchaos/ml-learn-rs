@@ -1,5 +1,5 @@
 use crate::nn::{
-    Float, Mat,
+    Ft, Mat,
     layer::{
         Layer, LayerWard,
         batch_norm::BatchNorm,
@@ -22,8 +22,8 @@ impl Model {
         hidden_sizes: &[usize],
         output_size: usize,
         weight_init: WeightInit,
-        batch_norm_momentum: Option<Float>,
-        dropout_ratio: Option<Float>,
+        batch_norm_momentum: Option<Ft>,
+        dropout_ratio: Option<Ft>,
         opt: Optimizer,
     ) -> Self {
         let mut layers = vec![];
@@ -48,8 +48,8 @@ impl Model {
             };
 
             if let Some(momentum) = batch_norm_momentum {
-                let gamma = Mat::ones((1, inner_output_size));
-                let beta = Mat::zeros((1, inner_output_size));
+                let gamma = Mat::ones([1, inner_output_size]);
+                let beta = Mat::zeros([1, inner_output_size]);
                 let batch_norm = BatchNorm::new(gamma, beta, momentum, opt.clone());
 
                 layers.push(Layer::BatchNorm(batch_norm));

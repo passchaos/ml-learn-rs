@@ -54,13 +54,13 @@ mod tests {
     fn test_mnist_data_parse() {
         let train_data_path = std::env::home_dir()
             .unwrap()
-            .join("Work/mnist/train-images-idx3-ubyte");
+            .join("Work/mnist/train-images.idx3-ubyte");
 
         let image_data = load_images(train_data_path);
 
         let train_label_path = std::env::home_dir()
             .unwrap()
-            .join("Work/mnist/train-labels-idx1-ubyte");
+            .join("Work/mnist/train-labels.idx1-ubyte");
         let image_label = load_labels(train_label_path);
 
         let oneshoted_labels = DigitalRecognition::one_hot(&image_label);

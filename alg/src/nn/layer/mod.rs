@@ -1,7 +1,6 @@
 use crate::nn::Mat;
 
 pub mod batch_norm;
-pub mod batch_norm_v1;
 pub mod dropout;
 pub mod linear;
 pub mod relu;

@@ -1,5 +1,7 @@
-use ndarray::{Array, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Dimension, NdFloat};
-use num::traits::float::TotalOrder;
+use std::ops::{AddAssign, DivAssign, MulAssign, Sub, SubAssign};
+
+use num::{Float, pow::Pow, traits::float::TotalOrder};
+use vectra::prelude::Array;
 pub mod autodiff;
 pub mod loss;
 pub mod normalize;
@@ -7,218 +9,97 @@ pub mod one_hot;
 
 pub struct DigitalRecognition;
 
-pub trait MaxOpT {
+pub trait SoftmaxOpt {
+    fn softmax(&self) -> Self;
+}
+
+pub trait ActivationFn {
+    fn sigmoid(&self) -> Self;
+    fn relu(&self) -> Self;
+}
+
+pub trait LossFn {
     type Output;
-    fn max_val(&self) -> &Self::Output;
+    fn mean_squared_error(&self, y: &Self) -> Self::Output;
+    fn cross_entropy_error(&self, y: &Self) -> Self::Output;
 }
 
-impl<T: TotalOrder, S: Data<Elem = T>, D: Dimension> MaxOpT for ArrayBase<S, D> {
-    type Output = T;
+impl<const D: usize, T: Float + AddAssign + MulAssign + Pow<T, Output = T>> ActivationFn
+    for Array<D, T>
+{
+    fn sigmoid(&self) -> Self {
+        self.clone()
+            .mul_scalar(-T::one())
+            .exp()
+            .add_scalar(T::one())
+            .pow(-T::one())
+    }
 
-    fn max_val(&self) -> &Self::Output {
-        self.iter().max_by(|a, b| a.total_cmp(b)).unwrap()
+    fn relu(&self) -> Self {
+        self.map(|x| x.max(T::zero()))
     }
 }
 
-pub trait SoftmaxOpT {
-    type Output;
-    fn softmax(&self) -> Self::Output;
-}
+impl<const D: usize, T: TotalOrder + Float + Default> SoftmaxOpt for Array<D, T> {
+    fn softmax(&self) -> Self {
+        let a = self.max_axis(D - 1);
+        let a = (self - &a).exp();
+        let a_t = a.sum_axis(D - 1);
 
-impl<T: NdFloat + TotalOrder> SoftmaxOpT for Array1<T> {
-    type Output = Array1<T>;
-
-    fn softmax(&self) -> Self::Output {
-        let max = self.max_val();
-
-        let exp_a = (self - *max).exp();
-
-        let sum = exp_a.sum();
-
-        exp_a / sum
+        &a / &a_t
     }
 }
 
-impl<T: NdFloat + TotalOrder> SoftmaxOpT for Array2<T> {
-    type Output = Array2<T>;
+// impl<const D: usize, T: Float + Default> LossFn for Array<D, T> {
+//     type Output = T;
 
-    fn softmax(&self) -> Self::Output {
-        // let max = self.max_val();
+//     fn mean_squared_error(&self, y: &Self) -> Self::Output {
+//         (self - y).pow2().sum() / (T::one() + T::one())
+//     }
 
-        // let exp_a = (self - *max).exp();
-
-        // let sum = exp_a.sum();
-
-        // exp_a / sum
-        let max = self.map_axis(Axis(1), |a| *(a.max_val()));
-
-        let mut exp_a = self.clone();
-        for (mut a, b) in exp_a.axis_iter_mut(Axis(0)).zip(max.into_iter()) {
-            a.map_inplace(|x| *x = (*x - b).exp());
-
-            let sum = a.sum();
-
-            a.map_inplace(|x| *x /= sum);
-        }
-
-        exp_a
-    }
-}
-
-pub trait SigmoidOpT {
-    type Output;
-    fn sigmoid(&self) -> Self::Output;
-}
-
-impl<D: Dimension> SigmoidOpT for Array<f64, D> {
-    type Output = Array<f64, D>;
-
-    fn sigmoid(&self) -> Self::Output {
-        1.0 / (1.0 + (-self).exp())
-    }
-}
-
-impl SigmoidOpT for f64 {
-    type Output = f64;
-
-    fn sigmoid(&self) -> Self::Output {
-        1.0 / (1.0 + (-self).exp())
-    }
-}
-
-impl<D: Dimension> SigmoidOpT for Array<f32, D> {
-    type Output = Array<f32, D>;
-
-    fn sigmoid(&self) -> Self::Output {
-        1.0 / (1.0 + (-self).exp())
-    }
-}
-
-impl SigmoidOpT for f32 {
-    type Output = f32;
-
-    fn sigmoid(&self) -> Self::Output {
-        1.0 / (1.0 + (-self).exp())
-    }
-}
-
-pub trait ReluOpT {
-    type Output;
-    fn relu(&self) -> Self::Output;
-}
-
-impl<D: Dimension> ReluOpT for Array<f64, D> {
-    type Output = Array<f64, D>;
-
-    fn relu(&self) -> Self::Output {
-        let mut data = self.clone();
-
-        data.map_inplace(|a| {
-            if *a < 0.0 {
-                *a = 0.0;
-            }
-        });
-
-        data
-    }
-}
-
-impl ReluOpT for f64 {
-    type Output = f64;
-
-    fn relu(&self) -> Self::Output {
-        if self > &0.0 { *self } else { 0.0 }
-    }
-}
-
-impl<D: Dimension> ReluOpT for Array<f32, D> {
-    type Output = Array<f32, D>;
-
-    fn relu(&self) -> Self::Output {
-        let mut data = self.clone();
-
-        data.map_inplace(|a| {
-            if *a < 0.0 {
-                *a = 0.0;
-            }
-        });
-
-        data
-    }
-}
-
-impl ReluOpT for f32 {
-    type Output = f32;
-
-    fn relu(&self) -> Self::Output {
-        if self > &0.0 { *self } else { 0.0 }
-    }
-}
-
-pub trait L2NormOpT<Output> {
-    fn l2_norm(&self) -> Output;
-}
-
-impl<'a, T: NdFloat> L2NormOpT<T> for ArrayView1<'a, T> {
-    fn l2_norm(&self) -> T {
-        self.pow2().sum().sqrt()
-    }
-}
-
-pub fn cos_similarity<T: NdFloat>(x: &ArrayView1<T>, y: &ArrayView1<T>) -> T {
-    let x_sum_sq = x.l2_norm() + T::epsilon();
-    let y_sum_sq = y.l2_norm() + T::epsilon();
-
-    let nx = x / x_sum_sq;
-    let ny = y / y_sum_sq;
-
-    let value = nx.dot(&ny);
-    value
-}
+//     fn cross_entropy_error(&self, y: &Self) -> Self::Output {
+//         let eps = T::epsilon();
+//         let log = self.map(|x| x.max(eps).ln());
+//         (&log - y).sum_axis(D - 1) / T::from(D - 1).unwrap()
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use ndarray::array;
 
     use super::{normalize::NormalizeTransform, *};
 
     #[test]
     fn test_softmax() {
-        let input = array![0.3, 2.9, 4.0];
+        let input = Array::from(vec![0.3, 2.9, 4.0]);
 
         let sm: Array<_, _> = input.softmax();
-        let dest = array![0.01821127, 0.24519181, 0.73659691];
+        let dest = Array::from(vec![0.01821127, 0.24519181, 0.73659691]);
 
         assert_relative_eq!(sm, dest, max_relative = 0.000001);
 
-        let a = array![
-            [0.1, 0.05, 0.6, 0., 0.05, 0.1, 0., 0.1, 0., 0.],
-            [0.1, 0.15, 0.5, 0., 0.05, 0.1, 0., 0.1, 0., 0.]
-        ];
+        let a = Array::from_vec(
+            vec![
+                0.1, 0.05, 0.6, 0., 0.05, 0.1, 0., 0.1, 0., 0., 0.1, 0.15, 0.5, 0., 0.05, 0.1, 0.,
+                0.1, 0., 0.,
+            ],
+            [2, 10],
+        );
 
         let sv = a.softmax();
         assert_relative_eq!(
             sv,
-            array![
-                [
+            Array::from_vec(
+                vec![
                     0.09832329, 0.09352801, 0.16210771, 0.0889666, 0.09352801, 0.09832329,
-                    0.0889666, 0.09832329, 0.0889666, 0.0889666
+                    0.0889666, 0.09832329, 0.0889666, 0.0889666, 0.09887603, 0.10394551, 0.1475057,
+                    0.08946673, 0.09405379, 0.09887603, 0.08946673, 0.09887603, 0.08946673,
+                    0.08946673
                 ],
-                [
-                    0.09887603, 0.10394551, 0.1475057, 0.08946673, 0.09405379, 0.09887603,
-                    0.08946673, 0.09887603, 0.08946673, 0.08946673
-                ]
-            ],
+                [2, 10]
+            ),
             max_relative = 0.000001
         );
-    }
-
-    #[test]
-    fn test_digital_recognition() {
-        let a = array![12.0, 12.0, 2.0, 5.0];
-
-        let b = DigitalRecognition::normalize(&a);
-        println!("b= {b}");
     }
 }

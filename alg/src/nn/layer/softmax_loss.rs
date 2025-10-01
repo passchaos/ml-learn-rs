@@ -1,6 +1,6 @@
 use crate::{
-    math::{SoftmaxOpT, loss::cross_entropy_error},
-    nn::{Float, Mat},
+    math::{SoftmaxOpt, loss::cross_entropy_error},
+    nn::{Ft, Mat},
 };
 
 #[derive(Default)]
@@ -10,19 +10,20 @@ pub struct SoftmaxWithLoss {
 }
 
 impl SoftmaxWithLoss {
-    pub fn forward(&mut self, x: &Mat, t: &Mat) -> Float {
+    pub fn forward(&mut self, x: &Mat, t: &Mat) -> Ft {
         self.t = Some(t.clone());
 
         let y = x.softmax();
         self.y = Some(y.clone());
 
-        cross_entropy_error(y, t.clone())
+        // cross_entropy_error(y, t.clone())
+        todo!()
     }
 
     pub fn backward(&mut self) -> Mat {
-        let batch_size = self.t.as_ref().unwrap().shape()[0] as Float;
+        let batch_size = self.t.as_ref().unwrap().shape()[0] as Ft;
 
-        let dx = (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()) / batch_size;
+        let dx = (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()).div_scalar(batch_size);
 
         dx
     }
@@ -31,14 +32,19 @@ impl SoftmaxWithLoss {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use ndarray::array;
 
     use super::*;
 
     #[test]
     fn test_softmax_with_loss_layer() {
-        let y = array![[0.1, 0.05, 0.6, 0.0, 0.05, 0.1, 0.0, 0.1, 0.0, 0.0]];
-        let t = array![[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+        let y = Mat::from_vec(
+            vec![0.1, 0.05, 0.6, 0.0, 0.05, 0.1, 0.0, 0.1, 0.0, 0.0],
+            [1, 10],
+        );
+        let t = Mat::from_vec(
+            vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1, 10],
+        );
 
         let mut layer = SoftmaxWithLoss::default();
         let loss = layer.forward(&y, &t);
@@ -47,32 +53,40 @@ mod tests {
         assert_relative_eq!(loss, 1.8194936854234711, max_relative = 1e-7);
         assert_relative_eq!(
             dx,
-            array![[
-                0.09832329,
-                0.09352801,
-                -0.83789229,
-                0.0889666,
-                0.09352801,
-                0.09832329,
-                0.0889666,
-                0.09832329,
-                0.0889666,
-                0.0889666
-            ]],
+            Mat::from_vec(
+                vec![
+                    0.09832329,
+                    0.09352801,
+                    -0.83789229,
+                    0.0889666,
+                    0.09352801,
+                    0.09832329,
+                    0.0889666,
+                    0.09832329,
+                    0.0889666,
+                    0.0889666
+                ],
+                [1, 10]
+            ),
             max_relative = 1e-7
         );
     }
 
     #[test]
     fn test_softmax_with_loss_layer_backward() {
-        let y = array![
-            [0.1, 0.05, 0.6, 0., 0.05, 0.1, 0., 0.1, 0., 0.],
-            [0.1, 0.15, 0.5, 0., 0.05, 0.1, 0., 0.1, 0., 0.]
-        ];
-        let t = array![
-            [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
-            [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
-        ];
+        let y = Mat::from_vec(
+            vec![
+                0.1, 0.05, 0.6, 0., 0.05, 0.1, 0., 0.1, 0., 0., 0.1, 0.15, 0.5, 0., 0.05, 0.1, 0.,
+                0.1, 0., 0.,
+            ],
+            [2, 10],
+        );
+        let t = Mat::from_vec(
+            vec![
+                0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+            ],
+            [2, 10],
+        );
 
         let mut layer = SoftmaxWithLoss::default();
         let loss = layer.forward(&y, &t);
@@ -81,8 +95,8 @@ mod tests {
         assert_relative_eq!(loss, 2.066690565855486, max_relative = 1e-7);
         assert_relative_eq!(
             dx,
-            array![
-                [
+            Mat::from_vec(
+                vec![
                     0.04916165,
                     0.04676401,
                     -0.41894615,
@@ -92,9 +106,7 @@ mod tests {
                     0.0444833,
                     0.04916165,
                     0.0444833,
-                    0.0444833
-                ],
-                [
+                    0.0444833,
                     -0.45056199,
                     0.05197276,
                     0.07375285,
@@ -105,8 +117,9 @@ mod tests {
                     0.04943801,
                     0.04473336,
                     0.04473336
-                ]
-            ],
+                ],
+                [2, 10]
+            ),
             max_relative = 1e-6
         );
     }

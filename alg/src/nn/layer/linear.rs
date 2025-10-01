@@ -1,14 +1,15 @@
-use ndarray::Axis;
+use vectra::prelude::Matmul;
 
 use crate::nn::{
-    Float, Mat,
+    Ft, Mat,
     layer::LayerWard,
+    matmul_policy,
     optimizer::{Optimizer, OptimizerOpT},
 };
 
 #[derive(Clone, Copy, Debug)]
 pub enum WeightInit {
-    Std(Float),
+    Std(Ft),
     Xavier,
     He,
 }
@@ -29,24 +30,24 @@ impl Linear {
         weight_opt: Optimizer,
         bias_opt: Option<Optimizer>,
     ) -> Self {
-        let weight = randn((input_size, output_size));
+        let weight = Mat::randn([input_size, output_size]);
 
         let scale = match weight_init {
             WeightInit::Std(std) => std,
             WeightInit::Xavier => {
-                let scale = (6.0 / (input_size + output_size) as Float).sqrt();
+                let scale = (6.0 / (input_size + output_size) as Ft).sqrt();
                 scale
             }
             WeightInit::He => {
-                let scale = (2.0 / input_size as Float).sqrt();
+                let scale = (2.0 / input_size as Ft).sqrt();
                 scale
             }
         };
 
-        let weight = weight * scale;
+        let weight = weight.mul_scalar(scale);
 
         let bias = if bias_opt.is_some() {
-            Some(Mat::zeros((1, output_size)))
+            Some(Mat::zeros([1, output_size]))
         } else {
             None
         };
@@ -66,21 +67,27 @@ impl LayerWard for Linear {
         self.x = Some(input.clone());
 
         if let Some(bias) = &self.bias {
-            input.dot(&self.weight) + bias
+            &input.matmul(&self.weight, matmul_policy()) + bias
         } else {
-            input.dot(&self.weight)
+            input.matmul(&self.weight, matmul_policy())
         }
     }
 
     fn backward(&mut self, grad: &Mat) -> Mat {
-        let dx = grad.dot(&self.weight.t());
+        let dx = grad.matmul(&self.weight.clone().transpose(), matmul_policy());
 
-        let dw = self.x.as_ref().unwrap().t().dot(grad);
+        let dw = self
+            .x
+            .as_ref()
+            .unwrap()
+            .clone()
+            .transpose()
+            .matmul(grad, matmul_policy());
 
         self.weight_opt.step(&mut self.weight, &dw);
 
         if let Some(bias) = self.bias.as_mut() {
-            let db = grad.sum_axis(Axis(0)).insert_axis(Axis(0));
+            let db = grad.sum_axis(0);
             self.bias_opt.as_mut().unwrap().step(bias, &db);
         }
 
