@@ -101,7 +101,7 @@ impl OptimizerOpT for AdaGrad {
         *h_value += &(grad * grad);
 
         let g_value = grad.clone().mul_scalar(self.lr);
-        let h_value = h_value.sqrt().add_scalar(crate::nn::float_epsilon());
+        let h_value = h_value.sqrt().add_scalar(crate::nn::delta());
 
         let new = &g_value / &h_value;
         *param -= new;
@@ -141,7 +141,7 @@ impl OptimizerOpT for RMSprop {
         *h_value = grad.pow2().mul_scalar(1.0 - self.decay_rate);
 
         let g_value = grad.clone().mul_scalar(self.lr);
-        let h_value = h_value.sqrt().add_scalar(crate::nn::float_epsilon());
+        let h_value = h_value.sqrt().add_scalar(crate::nn::delta());
 
         let new = &g_value / &h_value;
         *param -= new;
@@ -182,8 +182,8 @@ impl OptimizerOpT for Adam {
 
         self.iter += 1;
 
-        let lr_t =
-            self.lr * (1.0 - self.beta2.powi(self.iter)) / (1.0 - self.beta1.powi(self.iter));
+        let lr_t = self.lr * (1.0 - self.beta2.powi(self.iter)).sqrt()
+            / (1.0 - self.beta1.powi(self.iter));
 
         let m = self.m.as_mut().unwrap();
         let v = self.v.as_mut().unwrap();
@@ -194,7 +194,38 @@ impl OptimizerOpT for Adam {
         *v += &v_value;
 
         let v1 = m.clone().mul_scalar(lr_t);
-        let v2 = v.sqrt().sub_scalar(crate::nn::float_epsilon());
+        let v2 = v.sqrt().add_scalar(crate::nn::delta());
         *param -= &v1 / &v2;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use vectra::prelude::Array;
+
+    use super::*;
+
+    #[test]
+    fn test_sgd() {
+        let mut optimizer = Sgd::new(0.01);
+
+        let mut param = Array::from_vec(
+            vec![2.3012, 1.3212, 2.21212, 12.2, -2.1212, 32.122, 20.22, 0.11],
+            [2, 4],
+        );
+
+        let grad = Array::from_vec(vec![1.0, 2.0, 3.0, 4.0, -1.0, -2.0, -3.0, -4.0], [2, 4]);
+
+        optimizer.step(&mut param, &grad);
+
+        let result = Array::from_vec(
+            vec![
+                2.2912, 1.3012, 2.18212, 12.16, -2.1112, 32.142002, 20.25, 0.15,
+            ],
+            [2, 4],
+        );
+
+        assert_relative_eq!(param, result);
     }
 }

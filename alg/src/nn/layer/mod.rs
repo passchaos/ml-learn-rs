@@ -7,6 +7,7 @@ pub mod relu;
 pub mod sigmoid;
 pub mod softmax_loss;
 
+#[derive(Debug)]
 pub enum Layer {
     Linear(linear::Linear),
     Relu(relu::Relu),

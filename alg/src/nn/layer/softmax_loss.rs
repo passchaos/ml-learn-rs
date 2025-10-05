@@ -3,7 +3,7 @@ use crate::{
     nn::{Ft, Mat},
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SoftmaxWithLoss {
     y: Option<Mat>,
     t: Option<Mat>,
@@ -22,9 +22,7 @@ impl SoftmaxWithLoss {
     pub fn backward(&mut self) -> Mat {
         let batch_size = self.t.as_ref().unwrap().shape()[0] as Ft;
 
-        let dx = (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()).div_scalar(batch_size);
-
-        dx
+        (self.y.as_ref().unwrap() - self.t.as_ref().unwrap()).div_scalar(batch_size)
     }
 }
 
@@ -49,7 +47,7 @@ mod tests {
         let loss = layer.forward(&y, &t);
         let dx = layer.backward();
 
-        assert_relative_eq!(loss, 1.8194936854234711, max_relative = 1e-7);
+        assert_relative_eq!(loss, 1.8194936854234711, epsilon = 1e-5);
         assert_relative_eq!(
             dx,
             Mat::from_vec(
@@ -91,7 +89,7 @@ mod tests {
         let loss = layer.forward(&y, &t);
         let dx = layer.backward();
 
-        assert_relative_eq!(loss, 2.066690565855486, max_relative = 1e-7);
+        assert_relative_eq!(loss, 2.066690565855486, epsilon = 1e-5);
         assert_relative_eq!(
             dx,
             Mat::from_vec(

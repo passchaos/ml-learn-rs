@@ -5,8 +5,11 @@ members = ["alg", "tools", "examples/*"]
 [workspace.dependencies]
 alg = { path = "alg" }
 tools = { path = "tools" }
+
 ndarray = { version = "*" }
+ndarray-rand = { version = "*" }
 ndarray-linalg = { version = "*" }
+
 egui = { version = "0.32.1" }
 eframe = { version = "0.32.1" }
 egui_extras = { version = "0.32.1", features = ["all_loaders", "svg_text"] }
@@ -32,11 +35,3 @@ mimalloc = "*"
 vectra = { path = "../vectra" }
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 #
-
-[profile.release]
-codegen-units = 1
-lto = "fat"
-
-
-[profile.dev.package."*"]
-opt-level = 3

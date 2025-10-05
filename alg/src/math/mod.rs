@@ -1,9 +1,7 @@
-use std::ops::{AddAssign, MulAssign};
+use num::{Float, cast};
+use vectra::{NumExt, prelude::Array};
 
-use num::{Float, pow::Pow, traits::float::TotalOrder};
-use vectra::prelude::Array;
-pub mod autodiff;
-pub mod loss;
+use crate::nn::delta;
 
 pub trait ActivationFn {
     fn softmax(&self) -> Self;
@@ -17,15 +15,9 @@ pub trait LossFn {
     fn cross_entropy_error(&self, y: &Self) -> Self::Output;
 }
 
-impl<const D: usize, T: Float + TotalOrder + Default + AddAssign + MulAssign + Pow<T, Output = T>>
-    ActivationFn for Array<D, T>
-{
+impl<const D: usize, T: Float + NumExt> ActivationFn for Array<D, T> {
     fn sigmoid(&self) -> Self {
-        self.clone()
-            .mul_scalar(-T::one())
-            .exp()
-            .add_scalar(T::one())
-            .pow(-T::one())
+        (-self.clone()).exp().add_scalar(T::one()).recip()
     }
 
     fn relu(&self) -> Self {
@@ -41,7 +33,7 @@ impl<const D: usize, T: Float + TotalOrder + Default + AddAssign + MulAssign + P
     }
 }
 
-impl<const D: usize, T: Float + Default> LossFn for Array<D, T> {
+impl<T: Float + NumExt> LossFn for Array<1, T> {
     type Output = T;
 
     fn mean_squared_error(&self, y: &Self) -> Self::Output {
@@ -49,10 +41,25 @@ impl<const D: usize, T: Float + Default> LossFn for Array<D, T> {
     }
 
     fn cross_entropy_error(&self, y: &Self) -> Self::Output {
-        let eps = T::epsilon();
-        let log = self.map(|x| x.max(eps).ln());
+        let log = self.map(|&x| x + delta()).ln();
 
-        (&log * y).sum_axis(-1).mean().neg()
+        (&log * y).into_map(|a| -a).sum()
+    }
+}
+
+impl<T: Float + NumExt> LossFn for Array<2, T> {
+    type Output = T;
+
+    fn mean_squared_error(&self, t: &Self) -> Self::Output {
+        (self - t).pow2().sum() / (T::one() + T::one())
+    }
+
+    fn cross_entropy_error(&self, t: &Self) -> Self::Output {
+        let batch_size = self.shape()[0];
+
+        let y = self.map(|&x| x + delta()).ln();
+
+        (t * &y).into_map(|a| -a).sum() / cast::<_, _>(batch_size).unwrap()
     }
 }
 
@@ -61,7 +68,7 @@ mod tests {
     use approx::assert_relative_eq;
     use vectra::prelude::Array;
 
-    use crate::math::ActivationFn;
+    use crate::math::{ActivationFn, LossFn};
 
     #[test]
     fn test_softmax() {
@@ -94,5 +101,40 @@ mod tests {
             ),
             max_relative = 0.000001
         );
+    }
+
+    #[test]
+    fn test_cross_entropy_error() {
+        let t = Array::<_, f32>::from(vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let y = Array::from(vec![0.1, 0.05, 0.6, 0.0, 0.05, 0.1, 0.0, 0.1, 0.0, 0.0]);
+
+        let err1 = y.mean_squared_error(&t);
+        let err2 = y.cross_entropy_error(&t);
+
+        println!("mse= {err1} cee= {err2}");
+        assert_relative_eq!(err1, 0.097500000000000031);
+        assert_relative_eq!(err2, 0.510825457, epsilon = 1e-6);
+
+        let y = Array::<_, f32>::from_vec(
+            vec![
+                0.1, 0.05, 0.6, 0.0, 0.05, 0.1, 0.0, 0.1, 0.0, 0.0, 0.01, 0.15, 0.06, 0.55, 0.03,
+                0.07, 0.08, 0.01, 0.01, 0.03,
+            ],
+            [2, 10],
+        );
+        let t = Array::from_vec(
+            vec![
+                0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0,
+            ],
+            [2, 10],
+        );
+
+        let err1 = y.mean_squared_error(&t);
+        let err2 = y.cross_entropy_error(&t);
+
+        println!("mse= {err1} cee= {err2}");
+        assert_relative_eq!(err1, 0.21849997, epsilon = 1e-7);
+        assert_relative_eq!(err2, 0.55433106, epsilon = 1e-7);
     }
 }

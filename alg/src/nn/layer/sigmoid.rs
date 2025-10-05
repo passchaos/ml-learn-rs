@@ -1,12 +1,16 @@
-use crate::nn::{Mat, layer::LayerWard};
+use crate::{
+    math::ActivationFn,
+    nn::{Mat, layer::LayerWard},
+};
 
+#[derive(Debug)]
 pub struct Sigmoid {
     out: Option<Mat>,
 }
 
 impl LayerWard for Sigmoid {
     fn forward(&mut self, input: &Mat) -> Mat {
-        let out = input.map(|a| 1.0 / (1.0 + (-a).exp()));
+        let out = input.sigmoid();
 
         self.out = Some(out.clone());
 

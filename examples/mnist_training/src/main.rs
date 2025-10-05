@@ -21,6 +21,7 @@ use alg::nn::{
     },
     model::Model,
     optimizer::{AdaGrad, Adam, Momentum, Optimizer, OptimizerOpT, Sgd},
+    print_mat_stat_info, print_mat_stat_info_ndarray,
 };
 use egui_plot::{Legend, PlotPoints, Points};
 use vectra::prelude::*;
@@ -68,7 +69,7 @@ fn model_train<R: Rng>(
 ) {
     let mut model = Model::new(
         784,
-        &[100, 100],
+        &[100],
         10,
         weight_init,
         batch_norm_momentum,
@@ -86,31 +87,68 @@ fn model_train<R: Rng>(
         let begin = Instant::now();
         let batch_mask: Vec<_> = sample.choose_multiple(rng, batch_size).cloned().collect();
 
+        // i += 1;
+        // let batch_mask = (0..batch_size).map(|a| a * i as usize).collect::<Vec<_>>();
+
         let ts1 = Instant::now();
 
         let x_batch = x_train.select(0, batch_mask.as_slice());
         let t_batch = t_train.select(0, batch_mask.as_slice());
 
+        let x_batch1 =
+            ndarray::ArrayBase::<ndarray::OwnedRepr<f32>, _>::from_vec(x_batch.data().to_vec());
+        // let x_batch1 = x_batch1.to_shape((100, 784)).unwrap();
+        let x_batch1 = x_batch1.into_shape_with_order((100, 784)).unwrap();
+
+        // if idx == 1 {
+        //     println!("batch mask: {batch_mask:?}");
+        //     print_mat_stat_info(&x_batch, "x_batch: ");
+        //     print_mat_stat_info_ndarray(&x_batch1, "x_batch1: ");
+
+        //     let sum = x_batch1.iter().fold(0.0, |acc, x| acc + x);
+        //     println!("sum: {sum}");
+        // }
+
+        // println!("x_batch: {x_batch:?} t_batch: {t_batch:?}");
+
         let ts2 = Instant::now();
 
+        // println!("init model: {:?}", model);
+
+        // println!("model: {model:?}");
+        // println!("x_batch= {x_batch:?} t_batch= {t_batch:?}");
+        // println!(
+        //     "x batch info: shape= {:?} data_len= {}",
+        //     x_batch.shape(),
+        //     x_batch.data().len()
+        // );
         let loss = model.loss(&x_batch, &t_batch);
+
+        // println!("after loss model: {:?}", model);
 
         let ts3 = Instant::now();
         model.backward();
 
+        // println!("after backward model: {:?}", model);
+
         let ts4 = Instant::now();
 
         // let loss = model.loss(x_test, t_test);
-        println!(
-            "elapsed info: ts1= {:?} ts2= {:?} ts3= {:?} ts4= {:?}",
-            ts1 - begin,
-            ts2 - ts1,
-            ts3 - ts2,
-            ts4 - ts3
-        );
+        // println!(
+        //     "elapsed info: ts1= {:?} ts2= {:?} ts3= {:?} ts4= {:?}",
+        //     ts1 - begin,
+        //     ts2 - ts1,
+        //     ts3 - ts2,
+        //     ts4 - ts3
+        // );
         // println!("elapsed: 1_1= {elapsed11} 1= {elapsed1}, 2= {elapsed2}, 3= {elapsed3}");
 
         println!("idx: {i} loss: {loss}");
+        // println!("====================================================");
+
+        // if idx == 40 {
+        //     std::process::exit(0);
+        // }
 
         losses_map
             .write()
@@ -122,6 +160,12 @@ fn model_train<R: Rng>(
 
 fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
     let ((x_train, t_train), (x_test, t_test)) = load_mnist();
+
+    // println!("x_train: {x_train:?}");
+    // println!("t_train: {t_train:?}");
+    // println!("x_test: {x_test:?}");
+    // println!("t_test: {t_test:?}");
+    // return;
 
     println!(
         "{:?} {:?} {:?} {:?}",
@@ -180,8 +224,9 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
         // ),
         // (WeightInit::He, Optimizer::AdaGrad(AdaGrad::new(0.01))),
         (
-            WeightInit::He,
-            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            WeightInit::Std(0.01),
+            Optimizer::Sgd(Sgd::new(0.01)),
+            // Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
             None,
             None,
         ),
@@ -191,18 +236,18 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
             Some(0.9),
             None,
         ),
-        (
-            WeightInit::He,
-            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
-            None,
-            Some(0.2),
-        ),
-        (
-            WeightInit::He,
-            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
-            Some(0.9),
-            Some(0.2),
-        ),
+        // (
+        //     WeightInit::He,
+        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+        //     None,
+        //     Some(0.2),
+        // ),
+        // (
+        //     WeightInit::He,
+        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+        //     Some(0.9),
+        //     Some(0.2),
+        // ),
     ];
 
     for (weight_init, optimizer, batch_norm_momentum, dropout_ratio) in comb {

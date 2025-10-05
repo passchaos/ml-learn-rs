@@ -11,6 +11,11 @@ use crate::nn::{
     optimizer::Optimizer,
 };
 
+// mod layer;
+// mod simple;
+// mod two_layer;
+
+#[derive(Debug)]
 pub struct Model {
     layers: Vec<Layer>,
     out: SoftmaxWithLoss,
@@ -76,6 +81,7 @@ impl Model {
 
     pub fn predict(&mut self, x: &Mat) -> Mat {
         let mut x = x.clone();
+
         for layer in &mut self.layers {
             x = layer.forward(&x);
         }
@@ -85,6 +91,7 @@ impl Model {
 
     pub fn loss(&mut self, x: &Mat, t: &Mat) -> f32 {
         let y = self.predict(x);
+
         self.out.forward(&y, t)
     }
 

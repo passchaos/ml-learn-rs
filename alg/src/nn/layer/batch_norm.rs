@@ -4,6 +4,7 @@ use crate::nn::{
     optimizer::{Optimizer, OptimizerOpT},
 };
 
+#[derive(Debug)]
 struct ForwardInfo {
     batch_size: usize,
     xc: Mat,
@@ -13,6 +14,7 @@ struct ForwardInfo {
     running_var: Mat,
 }
 
+#[derive(Debug)]
 pub struct BatchNorm {
     gamma: Mat,
     beta: Mat,

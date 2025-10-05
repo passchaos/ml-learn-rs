@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 ndarray = { workspace = true }
+ndarray-rand = { workspace = true }
 ndarray-linalg = { workspace = true }
 
 tracing = { workspace = true }
@@ -23,3 +24,4 @@ vectra = { workspace = true }
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
 tools = { workspace = true }
+plotiron = { path = "../../plotiron" }

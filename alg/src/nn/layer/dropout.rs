@@ -1,5 +1,6 @@
 use crate::nn::{Ft, Mat, layer::LayerWard};
 
+#[derive(Debug)]
 pub struct Dropout {
     ratio: Ft,
     mask: Option<Mat>,
