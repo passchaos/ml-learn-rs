@@ -217,16 +217,16 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
         //     WeightInit::Xavier,
         //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
         // ),
-        // (WeightInit::He, Optimizer::Sgd(Sgd::new(0.01))),
-        // (
-        //     WeightInit::He,
-        //     Optimizer::Momentum(Momentum::new(0.01, 0.9)),
-        // ),
-        // (WeightInit::He, Optimizer::AdaGrad(AdaGrad::new(0.01))),
+        (WeightInit::He, Optimizer::Sgd(Sgd::new(0.01)), None, None),
         (
-            WeightInit::Std(0.01),
-            Optimizer::Sgd(Sgd::new(0.01)),
-            // Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            WeightInit::He,
+            Optimizer::Momentum(Momentum::new(0.01, 0.9)),
+            None,
+            None,
+        ),
+        (
+            WeightInit::He,
+            Optimizer::AdaGrad(AdaGrad::new(0.01)),
             None,
             None,
         ),
@@ -236,18 +236,18 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
             Some(0.9),
             None,
         ),
-        // (
-        //     WeightInit::He,
-        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
-        //     None,
-        //     Some(0.2),
-        // ),
-        // (
-        //     WeightInit::He,
-        //     Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
-        //     Some(0.9),
-        //     Some(0.2),
-        // ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            None,
+            Some(0.2),
+        ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            Some(0.9),
+            Some(0.2),
+        ),
     ];
 
     for (weight_init, optimizer, batch_norm_momentum, dropout_ratio) in comb {

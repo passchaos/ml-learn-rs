@@ -14,8 +14,7 @@ pub fn delta<T: Float>() -> T {
     }
 }
 pub fn matmul_policy() -> MatmulPolicy {
-    MatmulPolicy::Faer
-    // MatmulPolicy::default()
+    MatmulPolicy::default()
 }
 
 pub fn print_mat_stat_info_ndarray(grad: &ndarray::Array2<f32>, str_prefix: &str) {
