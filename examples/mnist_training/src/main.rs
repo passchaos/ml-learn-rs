@@ -233,6 +233,12 @@ fn train_logic(losses_map: Arc<RwLock<HashMap<String, Vec<f32>>>>) {
         (
             WeightInit::He,
             Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
+            None,
+            None,
+        ),
+        (
+            WeightInit::He,
+            Optimizer::Adam(Adam::new(0.001, 0.9, 0.999)),
             Some(0.9),
             None,
         ),
