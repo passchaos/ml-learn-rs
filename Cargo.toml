@@ -33,5 +33,6 @@ safetensors = "*"
 memmap2 = "*"
 mimalloc = "*"
 vectra = { path = "../vectra" }
+itertools = "*"
 # burn-tensor = { version = "*", features = ["cubecl-wgpu"] }
 #

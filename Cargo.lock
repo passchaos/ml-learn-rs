@@ -149,6 +149,7 @@ dependencies = [
  "anyhow",
  "approx",
  "byteorder",
+ "itertools 0.12.1",
  "ndarray",
  "ndarray-linalg",
  "ndarray-rand",

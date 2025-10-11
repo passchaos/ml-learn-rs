@@ -3,7 +3,6 @@ use vectra::prelude::Matmul;
 use crate::nn::{
     Ft, Mat,
     layer::LayerWard,
-    matmul_policy,
     optimizer::{Optimizer, OptimizerOpT},
 };
 
@@ -68,20 +67,20 @@ impl LayerWard for Linear {
         self.x = Some(input.clone());
 
         let out = if let Some(bias) = &self.bias {
-            &input.matmul(&self.weight, matmul_policy()) + bias
+            &input.matmul(&self.weight) + bias
         } else {
-            input.matmul(&self.weight, matmul_policy())
+            input.matmul(&self.weight)
         };
 
         out
     }
 
     fn backward(&mut self, grad: &Mat) -> Mat {
-        let dx = grad.matmul(&self.weight.clone().transpose(), matmul_policy());
+        let dx = grad.matmul(&self.weight.clone().transpose());
 
         let x_t = self.x.as_ref().unwrap().clone().transpose();
 
-        let dw = x_t.matmul(grad, matmul_policy());
+        let dw = x_t.matmul(grad);
 
         self.weight_opt.step(&mut self.weight, &dw);
 

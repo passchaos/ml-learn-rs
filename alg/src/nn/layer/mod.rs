@@ -1,6 +1,7 @@
 use crate::nn::Mat;
 
 pub mod batch_norm;
+pub mod convolution;
 pub mod dropout;
 pub mod linear;
 pub mod relu;
