@@ -37,13 +37,13 @@ fn load_mnist() -> (
 
     let train_data_path = mnist_dir.join("train-images.idx3-ubyte");
     let train_data =
-        alg::dataset::mnist::load_images(train_data_path).into_map(|v| v as f32 / 255.0);
+        alg::dataset::mnist::load_images(train_data_path).map_into(|v| v as f32 / 255.0);
 
     let label_data_path = mnist_dir.join("train-labels.idx1-ubyte");
     let train_labels = alg::dataset::mnist::load_labels(label_data_path).one_hot(10);
 
     let test_data_path = mnist_dir.join("t10k-images.idx3-ubyte");
-    let test_data = alg::dataset::mnist::load_images(test_data_path).into_map(|v| v as f32 / 255.0);
+    let test_data = alg::dataset::mnist::load_images(test_data_path).map_into(|v| v as f32 / 255.0);
 
     let label_data_path = mnist_dir.join("t10k-labels.idx1-ubyte");
     let test_labels = alg::dataset::mnist::load_labels(label_data_path).one_hot(10);

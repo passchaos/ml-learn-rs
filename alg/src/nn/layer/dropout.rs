@@ -16,7 +16,7 @@ impl LayerWard for Dropout {
     fn forward(&mut self, input: &Mat) -> Mat {
         // 这里注意使用的是均匀分布，如果使用标准正态分布，那么会有很大比例的权重值被置为0，那就是捣乱了
         let mask =
-            Mat::<Ft>::random(input.shape()).into_map(|x| if x < self.ratio { 0.0 } else { 1.0 });
+            Mat::<Ft>::random(input.shape()).map_into(|x| if x < self.ratio { 0.0 } else { 1.0 });
 
         let v = &mask * input;
         self.mask = Some(mask);

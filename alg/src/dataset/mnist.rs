@@ -48,14 +48,14 @@ pub fn load_mnist<T: NumExt>() -> ((Array<2, T>, Array<2, T>), (Array<2, T>, Arr
 
     let train_data_path = mnist_dir.join("train-images.idx3-ubyte");
     let train_data =
-        load_images(train_data_path).into_map(|v| T::from(v).unwrap() / T::from(255.0).unwrap());
+        load_images(train_data_path).map_into(|v| T::from(v).unwrap() / T::from(255.0).unwrap());
 
     let label_data_path = mnist_dir.join("train-labels.idx1-ubyte");
     let train_labels = load_labels(label_data_path).one_hot(10);
 
     let test_data_path = mnist_dir.join("t10k-images.idx3-ubyte");
     let test_data =
-        load_images(test_data_path).into_map(|v| T::from(v).unwrap() / T::from(255.0).unwrap());
+        load_images(test_data_path).map_into(|v| T::from(v).unwrap() / T::from(255.0).unwrap());
 
     let label_data_path = mnist_dir.join("t10k-labels.idx1-ubyte");
     let test_labels = load_labels(label_data_path).one_hot(10);

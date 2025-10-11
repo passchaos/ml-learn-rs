@@ -43,7 +43,7 @@ impl<T: Float + NumExt> LossFn for Array<1, T> {
     fn cross_entropy_error(&self, y: &Self) -> Self::Output {
         let log = self.map(|&x| x + delta()).ln();
 
-        (&log * y).into_map(|a| -a).sum()
+        (&log * y).map_into(|a| -a).sum()
     }
 }
 
@@ -59,7 +59,7 @@ impl<T: Float + NumExt> LossFn for Array<2, T> {
 
         let y = self.map(|&x| x + delta()).ln();
 
-        (t * &y).into_map(|a| -a).sum() / cast::<_, _>(batch_size).unwrap()
+        (t * &y).map_into(|a| -a).sum() / cast::<_, _>(batch_size).unwrap()
     }
 }
 
