@@ -20,19 +20,19 @@ impl<const D: usize, T: Debug> Dropout<D, T> {
 impl<const D: usize, T: Debug + NumExt + SampleUniform + PartialOrd> LayerWard<D, D, T>
     for Dropout<D, T>
 {
-    fn forward(&mut self, input: &Array<D, T>) -> Array<D, T> {
+    fn forward(&mut self, input: Array<D, T>) -> Array<D, T> {
         // 这里注意使用的是均匀分布，如果使用标准正态分布，那么会有很大比例的权重值被置为0，那就是捣乱了
         let mask = Array::<D, T>::random(input.shape())
             .map_into(|x| if x < self.ratio { T::zero() } else { T::one() });
 
-        let v = &mask * input;
+        let v = &mask * &input;
         self.mask = Some(mask);
 
         v
     }
 
-    fn backward(&mut self, grad: &Array<D, T>) -> Array<D, T> {
-        self.mask.as_ref().unwrap() * grad
+    fn backward(&mut self, grad: Array<D, T>) -> Array<D, T> {
+        self.mask.as_ref().unwrap() * &grad
     }
 }
 
@@ -51,7 +51,7 @@ mod tests {
             [2, 5],
         );
 
-        let output = dropout.forward(&input);
+        let output = dropout.forward(input);
         println!("output: {output}");
     }
 }

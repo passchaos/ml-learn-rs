@@ -42,12 +42,12 @@ impl<const D: usize, T: Debug> BatchNorm<D, T> {
     }
 }
 
-impl<const D: usize, T: Debug + Float + NumExt> LayerWard<D, 2, T> for BatchNorm<D, T> {
-    fn forward(&mut self, input: &Array<D, T>) -> Array<2, T> {
+impl<const D: usize, T: Debug + Float + NumExt> LayerWard<D, D, T> for BatchNorm<D, T> {
+    fn forward(&mut self, input: Array<D, T>) -> Array<D, T> {
         let input_shape = input.shape();
         let batch_size = input_shape[0];
 
-        let input = input.clone().reshape([batch_size as isize, -1]);
+        let input = input.reshape([batch_size as isize, -1]);
 
         let mu = input.mean_axis(0);
 
@@ -94,17 +94,21 @@ impl<const D: usize, T: Debug + Float + NumExt> LayerWard<D, 2, T> for BatchNorm
         //     self.beta.shape()
         // );
 
-        &(&self.gamma * &xn) + &self.beta
+        let out = &(&self.gamma * &xn) + &self.beta;
+        out.reshape(input_shape.map(|i| i as isize))
     }
 
-    fn backward(&mut self, grad: &Array<2, T>) -> Array<D, T> {
+    fn backward(&mut self, grad: Array<D, T>) -> Array<D, T> {
         let Some(info) = self.info.as_ref() else {
             panic!("BatchNorm::backward called before forward");
         };
 
+        let grad_shape = grad.shape();
+        let grad = grad.reshape([grad_shape[0] as isize, -1]);
+
         let dbeta = grad.sum_axis(0);
-        let dgemma = (&info.xn * grad).sum_axis(0);
-        let dxn = &self.gamma * grad;
+        let dgemma = (&info.xn * &grad).sum_axis(0);
+        let dxn = &self.gamma * &grad;
         let mut dxc = &dxn / &info.std;
         let dstd = (&(&dxn * &info.xc) / &(&info.std).pow2())
             .sum_axis(0)
@@ -125,7 +129,8 @@ impl<const D: usize, T: Debug + Float + NumExt> LayerWard<D, 2, T> for BatchNorm
         self.opt.step(&mut self.gamma, &dgemma);
         self.opt.step(&mut self.beta, &dbeta);
 
-        dx.reshape(self.info.as_ref().unwrap().input_shape.map(|i| i as isize))
+        let input_shape = info.input_shape.map(|i| i as isize);
+        dx.reshape(input_shape)
     }
 }
 
@@ -148,8 +153,8 @@ mod tests {
         let mut batch_norm = BatchNorm::new(gemma, beta, 0.9, Optimizer::Sgd(Sgd::new(0.1)));
 
         for i in 0..5 {
-            input = batch_norm.forward(&input);
-            let res = batch_norm.backward(&input);
+            input = batch_norm.forward(input);
+            let res = batch_norm.backward(input.clone());
             println!("input{i}: {input} res{i}: {res}")
         }
     }

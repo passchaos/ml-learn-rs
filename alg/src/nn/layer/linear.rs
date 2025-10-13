@@ -82,7 +82,7 @@ where
     StandardNormal: Distribution<T>,
     Array<2, T>: Matmul,
 {
-    fn forward(&mut self, input: &Array<D, T>) -> Array<2, T> {
+    fn forward(&mut self, input: Array<D, T>) -> Array<2, T> {
         self.x_original_shape = Some(input.shape());
         let new_shape = [input.shape()[0] as isize, -1];
         let input = input.clone().reshape(new_shape);
@@ -98,12 +98,12 @@ where
         out
     }
 
-    fn backward(&mut self, grad: &Array<2, T>) -> Array<D, T> {
+    fn backward(&mut self, grad: Array<2, T>) -> Array<D, T> {
         let dx = grad.matmul(&self.weight.clone().transpose());
 
         let x_t = self.x.as_ref().unwrap().clone().transpose();
 
-        let dw = x_t.matmul(grad);
+        let dw = x_t.matmul(&grad);
 
         self.weight_opt.step(&mut self.weight, &dw);
 
@@ -209,8 +209,8 @@ mod tests {
             [10, 4],
         );
 
-        let output = linear.forward(&input);
-        let grad = linear.backward(&output);
+        let output = linear.forward(input);
+        let grad = linear.backward(output.clone());
 
         let output_r = Array::from_vec(
             vec![

@@ -95,7 +95,7 @@ where
         let mut x = x.clone();
 
         for layer in &mut self.layers {
-            x = layer.forward(&x);
+            x = layer.forward(x);
         }
 
         x
@@ -111,7 +111,7 @@ where
         let mut dout = self.out.backward();
 
         for layer in self.layers.iter_mut().rev() {
-            dout = layer.backward(&dout);
+            dout = layer.backward(dout);
         }
     }
 }

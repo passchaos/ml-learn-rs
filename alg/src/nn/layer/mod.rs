@@ -25,8 +25,8 @@ pub enum Layer<const D: usize, T: Debug + Float + NumExt> {
 }
 
 pub trait LayerWard<const D1: usize, const D2: usize, T> {
-    fn forward(&mut self, input: &Array<D1, T>) -> Array<D2, T>;
-    fn backward(&mut self, grad: &Array<D2, T>) -> Array<D1, T>;
+    fn forward(&mut self, input: Array<D1, T>) -> Array<D2, T>;
+    fn backward(&mut self, grad: Array<D2, T>) -> Array<D1, T>;
 }
 
 impl<T: Debug + Float + NumExt + SampleUniform> LayerWard<2, 2, T> for Layer<2, T>
@@ -34,7 +34,7 @@ where
     Array<2, T>: Matmul,
     StandardNormal: Distribution<T>,
 {
-    fn forward(&mut self, input: &Array<2, T>) -> Array<2, T> {
+    fn forward(&mut self, input: Array<2, T>) -> Array<2, T> {
         match self {
             Layer::Linear(layer) => layer.forward(input),
             Layer::Relu(layer) => layer.forward(input),
@@ -43,7 +43,7 @@ where
             Layer::BatchNorm(layer) => layer.forward(input),
         }
     }
-    fn backward(&mut self, grad: &Array<2, T>) -> Array<2, T> {
+    fn backward(&mut self, grad: Array<2, T>) -> Array<2, T> {
         match self {
             Layer::Linear(layer) => layer.backward(grad),
             Layer::Relu(layer) => layer.backward(grad),

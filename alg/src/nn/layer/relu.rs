@@ -10,7 +10,7 @@ pub struct Relu<const D: usize, T: Float + NumExt> {
 }
 
 impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Relu<D, T> {
-    fn forward(&mut self, x: &Array<D, T>) -> Array<D, T> {
+    fn forward(&mut self, x: Array<D, T>) -> Array<D, T> {
         self.mask = Some(x.map(|&a| a <= T::zero()));
 
         let res = x.relu();
@@ -18,10 +18,8 @@ impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Relu<D, T> {
         res
     }
 
-    fn backward(&mut self, grad: &Array<D, T>) -> Array<D, T> {
-        let mut out = grad.clone();
-
-        out.multi_iter_mut(|idx, item| {
+    fn backward(&mut self, mut grad: Array<D, T>) -> Array<D, T> {
+        grad.multi_iter_mut(|idx, item| {
             let v = self.mask.as_ref().unwrap()[idx.map(|a| a as isize)];
 
             if v {
@@ -29,7 +27,7 @@ impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Relu<D, T> {
             }
         });
 
-        out
+        grad
     }
 }
 
@@ -89,8 +87,8 @@ mod tests {
             [10, 4],
         );
 
-        let output = relu.forward(&x);
-        let grad = relu.backward(&output);
+        let output = relu.forward(x.clone());
+        let grad = relu.backward(output.clone());
         println!("x= {x:?} output= {output:?} grad= {grad:?}");
 
         let output_r = Array::from_vec(

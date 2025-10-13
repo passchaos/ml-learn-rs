@@ -23,24 +23,24 @@ impl<T> ConvolutionLayer<T> {
     }
 }
 
-// impl<T> LayerWard for ConvolutionLayer<T>
-// where
-//     T: NumExt,
-// {
-//     fn forward(&mut self, input: &crate::nn::Mat) -> crate::nn::Mat {
-//         // let [f_n, c, f_h, f_w] = self.weight.shape();
-//         // let [n, _, h, w] = input.shape();
+impl<T> LayerWard<4, 2, T> for ConvolutionLayer<T>
+where
+    T: NumExt,
+{
+    fn forward(&mut self, input: Array<4, T>) -> Array<2, T> {
+        // let [f_n, c, f_h, f_w] = self.weight.shape();
+        // let [n, _, h, w] = input.shape();
 
-//         // let out = conv3(input, self.weight, pad, stride);
+        // let out = conv3(input, self.weight, pad, stride);
 
-//         // out
-//         todo!()
-//     }
+        // out
+        todo!()
+    }
 
-//     fn backward(&mut self, grad: &crate::nn::Mat) -> crate::nn::Mat {
-//         todo!()
-//     }
-// }
+    fn backward(&mut self, grad: Array<2, T>) -> Array<4, T> {
+        todo!()
+    }
+}
 
 fn conv3<T>(a: &Array<4, T>, b: &Array<4, T>, pad: usize, stride: usize) -> Array<4, T>
 where

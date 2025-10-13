@@ -9,7 +9,7 @@ pub struct Sigmoid<const D: usize, T: Float + NumExt> {
 }
 
 impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Sigmoid<D, T> {
-    fn forward(&mut self, input: &Array<D, T>) -> Array<D, T> {
+    fn forward(&mut self, input: Array<D, T>) -> Array<D, T> {
         let out = input.sigmoid();
 
         self.out = Some(out.clone());
@@ -17,15 +17,13 @@ impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Sigmoid<D, T> {
         out
     }
 
-    fn backward(&mut self, grad: &Array<D, T>) -> Array<D, T> {
-        let mut dx = grad.clone();
-
-        dx.multi_iter_mut(|idx, item| {
+    fn backward(&mut self, mut grad: Array<D, T>) -> Array<D, T> {
+        grad.multi_iter_mut(|idx, item| {
             let y = self.out.as_ref().unwrap()[idx.map(|a| a as isize)];
 
             *item = *item * (T::one() - y) * y;
         });
 
-        dx
+        grad
     }
 }
