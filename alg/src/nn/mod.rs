@@ -4,7 +4,6 @@ use num::Float;
 use vectra::{NumExt, prelude::*};
 
 type Ft = f32;
-type Mat<T = Ft> = Array<2, T>;
 
 pub fn delta<T: Float>() -> T {
     match type_name::<T>() {
@@ -21,7 +20,7 @@ pub fn print_mat_stat_info_ndarray(grad: &ndarray::Array2<f32>, str_prefix: &str
     println!("{str_prefix} sum= {sum} mean= {mean} var= {var}");
 }
 
-pub fn print_mat_stat_info(grad: &Mat<f32>, str_prefix: &str) {
+pub fn print_mat_stat_info(grad: &Array<2, f32>, str_prefix: &str) {
     let sum = grad.sum();
     let mean = grad.mean::<f32>();
     let var = grad.var(0.0);

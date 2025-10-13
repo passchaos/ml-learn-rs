@@ -1,15 +1,15 @@
-use crate::{
-    math::ActivationFn,
-    nn::{Mat, layer::LayerWard},
-};
+use num::Float;
+use vectra::{NumExt, prelude::Array};
+
+use crate::{math::ActivationFn, nn::layer::LayerWard};
 
 #[derive(Debug)]
-pub struct Sigmoid {
-    out: Option<Mat>,
+pub struct Sigmoid<const D: usize, T: Float + NumExt> {
+    out: Option<Array<D, T>>,
 }
 
-impl LayerWard for Sigmoid {
-    fn forward(&mut self, input: &Mat) -> Mat {
+impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Sigmoid<D, T> {
+    fn forward(&mut self, input: &Array<D, T>) -> Array<D, T> {
         let out = input.sigmoid();
 
         self.out = Some(out.clone());
@@ -17,13 +17,13 @@ impl LayerWard for Sigmoid {
         out
     }
 
-    fn backward(&mut self, grad: &Mat) -> Mat {
+    fn backward(&mut self, grad: &Array<D, T>) -> Array<D, T> {
         let mut dx = grad.clone();
 
         dx.multi_iter_mut(|idx, item| {
             let y = self.out.as_ref().unwrap()[idx.map(|a| a as isize)];
 
-            *item = *item * (1.0 - y) * y;
+            *item = *item * (T::one() - y) * y;
         });
 
         dx

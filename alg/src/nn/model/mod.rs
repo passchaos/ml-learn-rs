@@ -1,5 +1,13 @@
+use std::fmt::Debug;
+
+use num::Float;
+use rand_distr::{Distribution, StandardNormal, uniform::SampleUniform};
+use vectra::{
+    NumExt,
+    prelude::{Array, Matmul},
+};
+
 use crate::nn::{
-    Ft, Mat,
     layer::{
         Layer, LayerWard,
         batch_norm::BatchNorm,
@@ -16,20 +24,24 @@ use crate::nn::{
 // mod two_layer;
 
 #[derive(Debug)]
-pub struct Model {
-    layers: Vec<Layer>,
-    out: SoftmaxWithLoss,
+pub struct Model<T: Float + NumExt> {
+    layers: Vec<Layer<2, T>>,
+    out: SoftmaxWithLoss<T>,
 }
 
-impl Model {
+impl<T: Debug + Float + NumExt + SampleUniform> Model<T>
+where
+    StandardNormal: Distribution<T>,
+    Array<2, T>: Matmul,
+{
     pub fn new(
         input_size: usize,
         hidden_sizes: &[usize],
         output_size: usize,
-        weight_init: WeightInit,
-        batch_norm_momentum: Option<Ft>,
-        dropout_ratio: Option<Ft>,
-        opt: Optimizer,
+        weight_init: WeightInit<T>,
+        batch_norm_momentum: Option<T>,
+        dropout_ratio: Option<T>,
+        opt: Optimizer<2, T>,
     ) -> Self {
         let mut layers = vec![];
 
@@ -53,8 +65,8 @@ impl Model {
             };
 
             if let Some(momentum) = batch_norm_momentum {
-                let gamma = Mat::ones([1, inner_output_size]);
-                let beta = Mat::zeros([1, inner_output_size]);
+                let gamma = Array::ones([1, inner_output_size]);
+                let beta = Array::zeros([1, inner_output_size]);
                 let batch_norm = BatchNorm::new(gamma, beta, momentum, opt.clone());
 
                 layers.push(Layer::BatchNorm(batch_norm));
@@ -79,7 +91,7 @@ impl Model {
         Self { layers, out }
     }
 
-    pub fn predict(&mut self, x: &Mat) -> Mat {
+    pub fn predict(&mut self, x: &Array<2, T>) -> Array<2, T> {
         let mut x = x.clone();
 
         for layer in &mut self.layers {
@@ -89,7 +101,7 @@ impl Model {
         x
     }
 
-    pub fn loss(&mut self, x: &Mat, t: &Mat) -> f32 {
+    pub fn loss(&mut self, x: &Array<2, T>, t: &Array<2, T>) -> T {
         let y = self.predict(x);
 
         self.out.forward(&y, t)

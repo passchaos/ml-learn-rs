@@ -1,20 +1,22 @@
-use crate::nn::Ft;
-use crate::nn::Mat;
+use std::fmt::Debug;
 
-pub trait OptimizerOpT: std::fmt::Debug {
-    fn step(&mut self, param: &mut Mat, grad: &Mat);
+use num::Float;
+use vectra::{NumExt, prelude::Array};
+
+pub trait OptimizerOpT<const D: usize, T: Float + NumExt> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>);
 }
 
 #[derive(Clone, Debug)]
-pub enum Optimizer {
-    Sgd(Sgd),
-    Momentum(Momentum),
-    AdaGrad(AdaGrad),
-    Adam(Adam),
+pub enum Optimizer<const D: usize, T: Debug> {
+    Sgd(Sgd<T>),
+    Momentum(Momentum<D, T>),
+    AdaGrad(AdaGrad<D, T>),
+    Adam(Adam<D, T>),
 }
 
-impl OptimizerOpT for Optimizer {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Debug + Float + NumExt> OptimizerOpT<D, T> for Optimizer<D, T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         match self {
             Optimizer::Sgd(sgd) => sgd.step(param, grad),
             Optimizer::Momentum(momentum) => momentum.step(param, grad),
@@ -25,31 +27,31 @@ impl OptimizerOpT for Optimizer {
 }
 
 #[derive(Clone, Debug)]
-pub struct Sgd {
-    lr: Ft,
+pub struct Sgd<T> {
+    lr: T,
 }
 
-impl Sgd {
-    pub fn new(lr: Ft) -> Self {
+impl<T> Sgd<T> {
+    pub fn new(lr: T) -> Self {
         Sgd { lr }
     }
 }
 
-impl OptimizerOpT for Sgd {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Float + NumExt> OptimizerOpT<D, T> for Sgd<T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         *param -= grad.clone().mul_scalar(self.lr)
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct Momentum {
-    lr: Ft,
-    momentum: Ft,
-    v: Option<Mat>,
+pub struct Momentum<const D: usize, T> {
+    lr: T,
+    momentum: T,
+    v: Option<Array<D, T>>,
 }
 
-impl Momentum {
-    pub fn new(lr: Ft, momentum: Ft) -> Self {
+impl<const D: usize, T> Momentum<D, T> {
+    pub fn new(lr: T, momentum: T) -> Self {
         Momentum {
             lr,
             momentum,
@@ -58,11 +60,11 @@ impl Momentum {
     }
 }
 
-impl OptimizerOpT for Momentum {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Float + NumExt> OptimizerOpT<D, T> for Momentum<D, T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         // 初始化v
         if self.v.is_none() {
-            let default_value = Mat::zeros(param.shape());
+            let default_value = Array::zeros(param.shape());
 
             self.v = Some(default_value);
         }
@@ -77,22 +79,22 @@ impl OptimizerOpT for Momentum {
 }
 
 #[derive(Clone, Debug)]
-pub struct AdaGrad {
-    lr: Ft,
-    h: Option<Mat>,
+pub struct AdaGrad<const D: usize, T> {
+    lr: T,
+    h: Option<Array<D, T>>,
 }
 
-impl AdaGrad {
-    pub fn new(lr: Ft) -> Self {
+impl<const D: usize, T: Float + NumExt> AdaGrad<D, T> {
+    pub fn new(lr: T) -> Self {
         Self { lr, h: None }
     }
 }
 
-impl OptimizerOpT for AdaGrad {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Float + NumExt> OptimizerOpT<D, T> for AdaGrad<D, T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         // 初始化v
         if self.h.is_none() {
-            let default_value = Mat::zeros(param.shape());
+            let default_value = Array::zeros(param.shape());
 
             self.h = Some(default_value);
         }
@@ -109,14 +111,14 @@ impl OptimizerOpT for AdaGrad {
 }
 
 #[derive(Clone, Debug)]
-pub struct RMSprop {
-    lr: Ft,
-    decay_rate: Ft,
-    h: Option<Mat>,
+pub struct RMSprop<const D: usize, T: Float + NumExt> {
+    lr: T,
+    decay_rate: T,
+    h: Option<Array<D, T>>,
 }
 
-impl RMSprop {
-    pub fn new(lr: Ft, decay_rate: Ft) -> Self {
+impl<const D: usize, T: Float + NumExt> RMSprop<D, T> {
+    pub fn new(lr: T, decay_rate: T) -> Self {
         Self {
             lr,
             decay_rate,
@@ -125,11 +127,11 @@ impl RMSprop {
     }
 }
 
-impl OptimizerOpT for RMSprop {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Float + NumExt> OptimizerOpT<D, T> for RMSprop<D, T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         // 初始化v
         if self.h.is_none() {
-            let default_value = Mat::zeros(param.shape());
+            let default_value = Array::zeros(param.shape());
 
             self.h = Some(default_value);
         }
@@ -138,7 +140,7 @@ impl OptimizerOpT for RMSprop {
 
         *h_value = h_value.clone().mul_scalar(self.decay_rate);
 
-        *h_value = grad.pow2().mul_scalar(1.0 - self.decay_rate);
+        *h_value = grad.pow2().mul_scalar(T::one() - self.decay_rate);
 
         let g_value = grad.clone().mul_scalar(self.lr);
         let h_value = h_value.sqrt().add_scalar(crate::nn::delta());
@@ -149,17 +151,17 @@ impl OptimizerOpT for RMSprop {
 }
 
 #[derive(Clone, Debug)]
-pub struct Adam {
-    lr: Ft,
-    beta1: Ft,
-    beta2: Ft,
+pub struct Adam<const D: usize, T> {
+    lr: T,
+    beta1: T,
+    beta2: T,
     iter: i32,
-    m: Option<Mat>,
-    v: Option<Mat>,
+    m: Option<Array<D, T>>,
+    v: Option<Array<D, T>>,
 }
 
-impl Adam {
-    pub fn new(lr: Ft, beta1: Ft, beta2: Ft) -> Self {
+impl<const D: usize, T: Float + NumExt> Adam<D, T> {
+    pub fn new(lr: T, beta1: T, beta2: T) -> Self {
         Self {
             lr,
             beta1,
@@ -171,10 +173,10 @@ impl Adam {
     }
 }
 
-impl OptimizerOpT for Adam {
-    fn step(&mut self, param: &mut Mat, grad: &Mat) {
+impl<const D: usize, T: Float + NumExt> OptimizerOpT<D, T> for Adam<D, T> {
+    fn step(&mut self, param: &mut Array<D, T>, grad: &Array<D, T>) {
         if self.m.is_none() {
-            let default_value = Mat::zeros(param.shape());
+            let default_value = Array::zeros(param.shape());
 
             self.m = Some(default_value.clone());
             self.v = Some(default_value);
@@ -182,15 +184,15 @@ impl OptimizerOpT for Adam {
 
         self.iter += 1;
 
-        let lr_t = self.lr * (1.0 - self.beta2.powi(self.iter)).sqrt()
-            / (1.0 - self.beta1.powi(self.iter));
+        let lr_t = self.lr * (T::one() - self.beta2.powi(self.iter)).sqrt()
+            / (T::one() - self.beta1.powi(self.iter));
 
         let m = self.m.as_mut().unwrap();
         let v = self.v.as_mut().unwrap();
 
-        let m_value = (grad - &*m).mul_scalar(1.0 - self.beta1);
+        let m_value = (grad - &*m).mul_scalar(T::one() - self.beta1);
         *m += &m_value;
-        let v_value = (&grad.pow2() - &*v).mul_scalar(1.0 - self.beta2);
+        let v_value = (&grad.pow2() - &*v).mul_scalar(T::one() - self.beta2);
         *v += &v_value;
 
         let v1 = m.clone().mul_scalar(lr_t);

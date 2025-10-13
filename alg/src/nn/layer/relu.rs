@@ -1,30 +1,31 @@
-use crate::{
-    math::ActivationFn,
-    nn::{Mat, layer::LayerWard},
-};
+use num::Float;
+use vectra::{NumExt, prelude::Array};
+
+use crate::{math::ActivationFn, nn::layer::LayerWard};
 
 #[derive(Default, Debug)]
-pub struct Relu {
-    mask: Option<Mat<bool>>,
+pub struct Relu<const D: usize, T: Float + NumExt> {
+    mask: Option<Array<D, bool>>,
+    phantom: std::marker::PhantomData<T>,
 }
 
-impl LayerWard for Relu {
-    fn forward(&mut self, x: &Mat) -> Mat {
-        self.mask = Some(x.map(|&a| a <= 0.0));
+impl<const D: usize, T: Float + NumExt> LayerWard<D, D, T> for Relu<D, T> {
+    fn forward(&mut self, x: &Array<D, T>) -> Array<D, T> {
+        self.mask = Some(x.map(|&a| a <= T::zero()));
 
         let res = x.relu();
 
         res
     }
 
-    fn backward(&mut self, grad: &Mat) -> Mat {
+    fn backward(&mut self, grad: &Array<D, T>) -> Array<D, T> {
         let mut out = grad.clone();
 
         out.multi_iter_mut(|idx, item| {
             let v = self.mask.as_ref().unwrap()[idx.map(|a| a as isize)];
 
             if v {
-                *item = 0.0;
+                *item = T::zero();
             }
         });
 

@@ -1,20 +1,56 @@
 use itertools::Itertools;
 use vectra::{NumExt, prelude::Array};
 
+use crate::nn::layer::LayerWard;
+
+struct ConvolutionLayer<T> {
+    weight: Array<4, T>,
+    bias: Array<1, T>,
+    stride: usize,
+    pad: usize,
+}
+
+impl<T> ConvolutionLayer<T> {
+    fn new(weight: Array<4, T>, bias: Array<1, T>, stride: usize, pad: usize) -> Self {
+        assert_eq!(weight.shape()[0], bias.shape()[0]);
+
+        ConvolutionLayer {
+            weight,
+            bias,
+            stride,
+            pad,
+        }
+    }
+}
+
+// impl<T> LayerWard for ConvolutionLayer<T>
+// where
+//     T: NumExt,
+// {
+//     fn forward(&mut self, input: &crate::nn::Mat) -> crate::nn::Mat {
+//         // let [f_n, c, f_h, f_w] = self.weight.shape();
+//         // let [n, _, h, w] = input.shape();
+
+//         // let out = conv3(input, self.weight, pad, stride);
+
+//         // out
+//         todo!()
+//     }
+
+//     fn backward(&mut self, grad: &crate::nn::Mat) -> crate::nn::Mat {
+//         todo!()
+//     }
+// }
+
 fn conv3<T>(a: &Array<4, T>, b: &Array<4, T>, pad: usize, stride: usize) -> Array<4, T>
 where
     T: NumExt,
 {
     let a = a.pad((pad, pad, pad, pad), T::zero());
 
-    let i_n = a.shape()[4 - 4];
-    let i_c = a.shape()[4 - 3];
-    let i_h = a.shape()[4 - 2];
-    let i_w = a.shape()[4 - 1];
+    let [i_n, i_c, i_h, i_w] = a.shape();
 
-    let w_n = b.shape()[4 - 4];
-    let w_h = b.shape()[4 - 2];
-    let w_w = b.shape()[4 - 1];
+    let [w_n, _, w_h, w_w] = b.shape();
 
     let o_h = (i_h - w_h) / stride + 1;
     let o_w = (i_w - w_w) / stride + 1;
@@ -88,10 +124,8 @@ where
     F: Fn(Vec<([isize; 4], &'a T)>) -> T,
 {
     let i_shape = input.shape();
-    let i_n = i_shape[0];
-    let i_c = i_shape[1];
-    let i_h = i_shape[2];
-    let i_w = i_shape[3];
+
+    let [i_n, i_c, i_h, i_w] = i_shape;
 
     let o_h = (i_h - stride) / stride + 1;
     let o_w = (i_w - stride) / stride + 1;
@@ -193,13 +227,17 @@ mod tests {
             vec![1, 2, 1, 0, 0, 1, 2, 3, 3, 0, 1, 2, 2, 4, 0, 1],
             [1, 1, 4, 4],
         );
+        let a = Array::cat(&[&a, &a], 1);
         let b = pool(&a, 2, |values| {
             let v = values.into_iter().map(|(_i, v)| v).max().unwrap();
 
             *v
         });
 
-        assert_eq!(b, Array::from_vec(vec![2, 3, 4, 2], [1, 1, 2, 2]));
+        assert_eq!(
+            b,
+            Array::from_vec(vec![2, 3, 4, 2, 2, 3, 4, 2], [1, 2, 2, 2])
+        );
         println!("pooled value: {b:?}");
     }
 }

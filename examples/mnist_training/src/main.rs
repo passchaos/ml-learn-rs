@@ -62,8 +62,8 @@ fn model_train<R: Rng>(
     batch_size: usize,
     sample: &[usize],
     rng: &mut R,
-    weight_init: WeightInit,
-    optimizer: Optimizer,
+    weight_init: WeightInit<f32>,
+    optimizer: Optimizer<2, f32>,
     batch_norm_momentum: Option<f32>,
     dropout_ratio: Option<f32>,
 ) {

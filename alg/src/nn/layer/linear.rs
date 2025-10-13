@@ -1,45 +1,59 @@
-use vectra::prelude::Matmul;
+use std::fmt::Debug;
+
+use num::Float;
+use num::cast;
+use rand_distr::Distribution;
+use rand_distr::StandardNormal;
+use vectra::{
+    NumExt,
+    prelude::{Array, Matmul},
+};
 
 use crate::nn::{
-    Ft, Mat,
     layer::LayerWard,
     optimizer::{Optimizer, OptimizerOpT},
 };
 
 #[derive(Clone, Copy, Debug)]
-pub enum WeightInit {
-    Std(Ft),
+pub enum WeightInit<T> {
+    Std(T),
     Xavier,
     He,
 }
 
 #[derive(Debug)]
-pub struct Linear {
-    weight: Mat,
-    bias: Option<Mat>,
-    weight_opt: Optimizer,
-    bias_opt: Option<Optimizer>,
-    x: Option<Mat>,
+pub struct Linear<const D: usize, T: Debug> {
+    weight: Array<2, T>,
+    bias: Option<Array<2, T>>,
+    weight_opt: Optimizer<2, T>,
+    bias_opt: Option<Optimizer<2, T>>,
+    x: Option<Array<2, T>>,
+    x_original_shape: Option<[usize; D]>,
 }
 
-impl Linear {
+impl<const D: usize, T: Debug + Float + NumExt> Linear<D, T>
+where
+    StandardNormal: Distribution<T>,
+{
     pub fn new(
-        weight_init: WeightInit,
+        weight_init: WeightInit<T>,
         input_size: usize,
         output_size: usize,
-        weight_opt: Optimizer,
-        bias_opt: Option<Optimizer>,
+        weight_opt: Optimizer<2, T>,
+        bias_opt: Option<Optimizer<2, T>>,
     ) -> Self {
-        let weight = Mat::randn([input_size, output_size]);
+        let weight = Array::randn([input_size, output_size]);
 
         let scale = match weight_init {
             WeightInit::Std(std) => std,
             WeightInit::Xavier => {
-                let scale = (6.0 / (input_size + output_size) as Ft).sqrt();
+                let scale = (cast::<_, T>(6.0).unwrap()
+                    / cast::<_, T>(input_size + output_size).unwrap())
+                .sqrt();
                 scale
             }
             WeightInit::He => {
-                let scale = (2.0 / input_size as Ft).sqrt();
+                let scale = (cast::<_, T>(2.0).unwrap() / cast::<_, T>(input_size).unwrap()).sqrt();
                 scale
             }
         };
@@ -47,7 +61,7 @@ impl Linear {
         let weight = weight.mul_scalar(scale);
 
         let bias = if bias_opt.is_some() {
-            Some(Mat::zeros([1, output_size]))
+            Some(Array::zeros([1, output_size]))
         } else {
             None
         };
@@ -58,12 +72,21 @@ impl Linear {
             weight_opt,
             bias_opt,
             x: None,
+            x_original_shape: None,
         }
     }
 }
 
-impl LayerWard for Linear {
-    fn forward(&mut self, input: &Mat) -> Mat {
+impl<const D: usize, T: Debug + Float + NumExt> LayerWard<D, 2, T> for Linear<D, T>
+where
+    StandardNormal: Distribution<T>,
+    Array<2, T>: Matmul,
+{
+    fn forward(&mut self, input: &Array<D, T>) -> Array<2, T> {
+        self.x_original_shape = Some(input.shape());
+        let new_shape = [input.shape()[0] as isize, -1];
+        let input = input.clone().reshape(new_shape);
+
         self.x = Some(input.clone());
 
         let out = if let Some(bias) = &self.bias {
@@ -75,7 +98,7 @@ impl LayerWard for Linear {
         out
     }
 
-    fn backward(&mut self, grad: &Mat) -> Mat {
+    fn backward(&mut self, grad: &Array<2, T>) -> Array<D, T> {
         let dx = grad.matmul(&self.weight.clone().transpose());
 
         let x_t = self.x.as_ref().unwrap().clone().transpose();
@@ -89,7 +112,7 @@ impl LayerWard for Linear {
             self.bias_opt.as_mut().unwrap().step(bias, &db);
         }
 
-        dx
+        dx.reshape(self.x_original_shape.unwrap().map(|i| i as isize))
     }
 }
 
@@ -108,7 +131,7 @@ mod tests {
         let output_size = 3;
         let batch_size = 10;
 
-        let weight_init = WeightInit::He;
+        let weight_init = WeightInit::<f64>::He;
         let opt = Sgd::new(0.01);
 
         let weight = Array::from_vec(
@@ -136,6 +159,7 @@ mod tests {
             x: None,
             weight_opt: Optimizer::Sgd(opt.clone()),
             bias_opt: Some(Optimizer::Sgd(opt)),
+            x_original_shape: None,
         };
         println!("linear: {linear:?}");
 
