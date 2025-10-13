@@ -23,21 +23,48 @@ impl<T> ConvolutionLayer<T> {
     }
 }
 
-impl<T> LayerWard<4, 2, T> for ConvolutionLayer<T>
+impl<T> LayerWard<4, 4, T> for ConvolutionLayer<T>
 where
     T: NumExt,
 {
-    fn forward(&mut self, input: Array<4, T>) -> Array<2, T> {
+    fn forward(&mut self, input: Array<4, T>) -> Array<4, T> {
         // let [f_n, c, f_h, f_w] = self.weight.shape();
         // let [n, _, h, w] = input.shape();
 
-        // let out = conv3(input, self.weight, pad, stride);
+        let out = conv3(&input, &self.weight, self.pad, self.stride);
 
-        // out
-        todo!()
+        out
     }
 
-    fn backward(&mut self, grad: Array<2, T>) -> Array<4, T> {
+    fn backward(&mut self, grad: Array<4, T>) -> Array<4, T> {
+        todo!()
+    }
+}
+
+struct PoolingLayer {
+    stride: usize,
+}
+
+impl PoolingLayer {
+    fn new(stride: usize) -> Self {
+        PoolingLayer { stride }
+    }
+}
+
+impl<T: 'static + NumExt> LayerWard<4, 4, T> for PoolingLayer {
+    fn forward(&mut self, input: Array<4, T>) -> Array<4, T> {
+        let out = pool(&input, self.stride, |values| {
+            let val = values
+                .into_iter()
+                .map(|(_i, v)| v)
+                .max_by(|a, b| a.cmp_ext(b))
+                .unwrap();
+            val.clone()
+        });
+        out
+    }
+
+    fn backward(&mut self, grad: Array<4, T>) -> Array<4, T> {
         todo!()
     }
 }
