@@ -1,4 +1,3 @@
-use alg::math::ActivationFn;
 use plotiron::prelude::*;
 use vectra::prelude::*;
 

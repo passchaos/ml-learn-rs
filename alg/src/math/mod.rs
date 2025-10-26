@@ -3,34 +3,10 @@ use vectra::{NumExt, prelude::Array};
 
 use crate::nn::delta;
 
-pub trait ActivationFn {
-    fn softmax(&self) -> Self;
-    fn sigmoid(&self) -> Self;
-    fn relu(&self) -> Self;
-}
-
 pub trait LossFn {
     type Output;
     fn mean_squared_error(&self, y: &Self) -> Self::Output;
     fn cross_entropy_error(&self, y: &Self) -> Self::Output;
-}
-
-impl<const D: usize, T: Float + NumExt> ActivationFn for Array<D, T> {
-    fn sigmoid(&self) -> Self {
-        (-self.clone()).exp().add_scalar(T::one()).recip()
-    }
-
-    fn relu(&self) -> Self {
-        self.map(|x| x.max(T::zero()))
-    }
-
-    fn softmax(&self) -> Self {
-        let a = self.max_axis((D - 1) as isize);
-        let a = (self - &a).exp();
-        let a_t = a.sum_axis((D - 1) as isize);
-
-        &a / &a_t
-    }
 }
 
 impl<T: Float + NumExt> LossFn for Array<1, T> {
@@ -68,7 +44,7 @@ mod tests {
     use approx::assert_relative_eq;
     use vectra::prelude::Array;
 
-    use crate::math::{ActivationFn, LossFn};
+    use crate::math::LossFn;
 
     #[test]
     fn test_softmax() {

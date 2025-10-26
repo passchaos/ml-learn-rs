@@ -1,7 +1,7 @@
 use num::{Float, cast};
 use vectra::{NumExt, prelude::Array};
 
-use crate::math::{ActivationFn, LossFn};
+use crate::math::LossFn;
 
 #[derive(Default, Debug)]
 pub struct SoftmaxWithLoss<T: Float + NumExt> {

@@ -1,7 +1,7 @@
 use num::Float;
 use vectra::{NumExt, prelude::Array};
 
-use crate::{math::ActivationFn, nn::layer::LayerWard};
+use crate::nn::layer::LayerWard;
 
 #[derive(Default, Debug)]
 pub struct Relu<const D: usize, T: Float + NumExt> {
